@@ -1,0 +1,23 @@
+name: example_riverpod
+description: Example of using Riverpod with Modularity framework.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.0
+  modularity_flutter:
+    path: ../../packages/flutter
+  modularity_core:
+    path: ../../packages/core
+  modularity_contracts:
+    path: ../../packages/contracts
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+

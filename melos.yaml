@@ -1,0 +1,52 @@
+name: modularity
+repository: https://github.com/your_org/modularity
+
+packages:
+  - packages/**
+  - examples/**
+
+command:
+  bootstrap:
+    # Включаем, чтобы melos автоматически линковал локальные пакеты
+    usePubspecOverrides: true
+
+scripts:
+  analyze:
+    exec: flutter analyze .
+    description: Run `flutter analyze` in all packages.
+
+  test:core:
+    exec: flutter test
+    packageFilters:
+      scope: modularity_core
+    description: Run tests for Core package.
+
+  test:flutter:
+    exec: flutter test
+    packageFilters:
+      scope: modularity_flutter
+    description: Run tests for Flutter package.
+
+  test:cli:
+    exec: flutter test
+    packageFilters:
+      scope: modularity_cli
+    description: Run tests for CLI package.
+
+  test:infra:
+    exec: flutter test
+    packageFilters:
+      scope: modularity_test
+    description: Run tests for Modularity Test Infrastructure.
+
+  test:examples:
+    exec: flutter test
+    packageFilters:
+      scope: 
+        - example_*
+        - complex_*
+    description: Run tests for all examples.
+
+  test:all:
+    run: melos run test:core && melos run test:flutter && melos run test:cli && melos run test:infra && melos run test:examples
+    description: Run all tests across the entire workspace.

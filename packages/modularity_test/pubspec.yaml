@@ -1,0 +1,16 @@
+name: modularity_test
+description: Testing utilities for Modularity framework.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  modularity_contracts:
+    path: ../contracts
+  modularity_core:
+    path: ../core
+  test: ^1.24.0
+  meta: ^1.7.0
+

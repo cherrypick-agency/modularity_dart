@@ -1,0 +1,4 @@
+# melos_managed_dependency_overrides: modularity_contracts
+dependency_overrides:
+  modularity_contracts:
+    path: ../contracts

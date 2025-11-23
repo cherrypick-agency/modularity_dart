@@ -1,0 +1,10 @@
+# melos_managed_dependency_overrides: modularity_contracts,modularity_core,modularity_flutter,modularity_cli
+dependency_overrides:
+  modularity_cli:
+    path: ../../packages/modularity_cli
+  modularity_contracts:
+    path: ../../packages/contracts
+  modularity_core:
+    path: ../../packages/core
+  modularity_flutter:
+    path: ../../packages/flutter

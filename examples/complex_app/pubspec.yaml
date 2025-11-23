@@ -1,0 +1,26 @@
+name: complex_app
+description: A complex example application showcasing Modularity framework features.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  modularity_flutter:
+    path: ../../packages/flutter
+  modularity_core:
+    path: ../../packages/core
+  modularity_contracts:
+    path: ../../packages/contracts
+  provider: ^6.0.0 # For simple state management demo inside modules
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  modularity_cli:
+    path: ../../packages/modularity_cli
+
