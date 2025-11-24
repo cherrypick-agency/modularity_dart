@@ -16,7 +16,7 @@ class _Registration {
 
 /// Простая реализация Binder на основе Map.
 /// Поддерживает разделение на Public (Exports) и Private (Binds) зависимости.
-class SimpleBinder implements Binder {
+class SimpleBinder implements ExportableBinder {
   final Map<Type, _Registration> _privateRegistrations = {};
   final Map<Type, _Registration> _publicRegistrations = {};
 
@@ -41,9 +41,11 @@ class SimpleBinder implements Binder {
   }
 
   /// Включает режим экспорта (регистрация в публичный скоуп).
+  @override
   void enableExportMode() => _isExportMode = true;
 
   /// Выключает режим экспорта (регистрация в приватный скоуп).
+  @override
   void disableExportMode() => _isExportMode = false;
 
   @override
@@ -120,7 +122,7 @@ class SimpleBinder implements Binder {
 
     // 2. Search in imports (ONLY Public exports of imported modules)
     for (final importedBinder in _imports) {
-      if (importedBinder is SimpleBinder) {
+      if (importedBinder is ExportableBinder) {
         final found = importedBinder.tryGetPublic<T>();
         if (found != null) return found;
       } else {
@@ -160,7 +162,12 @@ class SimpleBinder implements Binder {
 
     // 2. Imports
     for (final importedBinder in _imports) {
-       if (importedBinder.contains(type)) return true;
+       // Correctly check only public exports for imports
+       if (importedBinder is ExportableBinder) {
+         if (importedBinder.containsPublic(type)) return true;
+       } else {
+         if (importedBinder.contains(type)) return true;
+       }
     }
 
     // 3. Parent
@@ -170,11 +177,17 @@ class SimpleBinder implements Binder {
   }
   
   /// Ищет ТОЛЬКО в публичных зависимостях (для использования другими модулями).
+  @override
   T? tryGetPublic<T extends Object>() {
     if (_publicRegistrations.containsKey(T)) {
       return _resolveRegistration<T>(_publicRegistrations[T]!);
     }
     return null; 
+  }
+
+  @override
+  bool containsPublic(Type type) {
+    return _publicRegistrations.containsKey(type);
   }
 
   T _resolveRegistration<T extends Object>(_Registration reg) {

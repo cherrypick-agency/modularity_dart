@@ -1,0 +1,13 @@
+name: modularity_get_it
+description: GetIt adapter for Modularity.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  get_it: ^8.0.0
+  modularity_contracts:
+    path: ../../contracts
+

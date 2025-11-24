@@ -98,7 +98,7 @@ class ModuleController {
       }
 
       // 4. Binds (Private & Public)
-      if (binder is SimpleBinder) (binder as SimpleBinder).disableExportMode();
+      if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
       module.binds(binder);
       
       // Apply Overrides (Test)
@@ -106,9 +106,9 @@ class ModuleController {
         overrides!(binder);
       }
 
-      if (binder is SimpleBinder) (binder as SimpleBinder).enableExportMode();
+      if (binder is ExportableBinder) (binder as ExportableBinder).enableExportMode();
       module.exports(binder);
-      if (binder is SimpleBinder) (binder as SimpleBinder).disableExportMode();
+      if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
 
       // 5. Async Init
       await module.onInit();
@@ -139,9 +139,9 @@ class ModuleController {
     // Для MVP мы просто вызываем хук и перезаписываем.
     // В будущем SimpleBinder должен поддерживать "updateFactoryOnly".
     
-    if (binder is SimpleBinder) (binder as SimpleBinder).disableExportMode();
+    if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
     module.binds(binder);
-    if (binder is SimpleBinder) (binder as SimpleBinder).enableExportMode();
+    if (binder is ExportableBinder) (binder as ExportableBinder).enableExportMode();
     module.exports(binder);
     
     // Хук пользователя
@@ -153,6 +153,9 @@ class ModuleController {
     module.onDispose();
     if (binder is SimpleBinder) {
        (binder as SimpleBinder).dispose();
+    } else if (binder is ExportableBinder) {
+       // Try dispose if available, currently only SimpleBinder has explicit dispose method
+       // We might need DisposableBinder interface too.
     }
     await _statusController.close();
     

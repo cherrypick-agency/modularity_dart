@@ -184,21 +184,23 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> with Rou
     
     // Agnostic Default
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-           const Text('Module Init Failed', textDirection: TextDirection.ltr),
-           const SizedBox(height: 8),
-           Text(_error.toString(), textDirection: TextDirection.ltr),
-           const SizedBox(height: 8),
-           GestureDetector(
-             onTap: _retry,
-             child: const Padding(
-               padding: EdgeInsets.all(8.0),
-               child: Text('Retry', textDirection: TextDirection.ltr, style: TextStyle(color: Color(0xFF0000FF))),
+      child: SingleChildScrollView( // Add scroll to prevent overflow
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+             const Text('Module Init Failed', textDirection: TextDirection.ltr),
+             const SizedBox(height: 8),
+             Text(_error.toString(), textDirection: TextDirection.ltr),
+             const SizedBox(height: 8),
+             GestureDetector(
+               onTap: _retry,
+               child: const Padding(
+                 padding: EdgeInsets.all(8.0),
+                 child: Text('Retry', textDirection: TextDirection.ltr, style: TextStyle(color: Color(0xFF0000FF))),
+               ),
              ),
-           ),
-        ],
+          ],
+        ),
       ),
     );
   }

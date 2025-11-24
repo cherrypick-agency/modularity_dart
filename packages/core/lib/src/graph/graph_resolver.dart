@@ -14,54 +14,61 @@ class GraphResolver {
     Set<Type>? resolutionStack,
     List<ModuleInterceptor> interceptors = const [],
   }) async {
-    final List<ModuleController> resolvedControllers = [];
     final currentStack = resolutionStack ?? {module.runtimeType};
 
-    for (final importModule in module.imports) {
+    // 1. Подготавливаем все задачи (Futures), но запускаем их "параллельно"
+    final futures = module.imports.map((importModule) async {
       final type = importModule.runtimeType;
-      
-      // Circular Dependency Check
+
+      // Check Circular Dependency (Immediate Fail-Fast)
       if (currentStack.contains(type)) {
         throw Exception(
-          'Circular dependency detected: ${currentStack.join(' -> ')} -> $type'
+          'Circular dependency detected: ${currentStack.join(' -> ')} -> $type',
         );
       }
 
+      // --- CRITICAL SECTION START (Synchronous) ---
+      // Важно: Получение или создание контроллера должно быть атомарным,
+      // чтобы параллельные ветки не создали дубликатов.
+      // В Dart этот блок не прервется, пока нет await.
       ModuleController? controller = registry[type];
 
-      // 1. Если контроллера нет - создаем (Lazy creation)
       if (controller == null) {
         controller = ModuleController(
-          importModule, 
+          importModule,
           binderFactory: binderFactory,
           interceptors: interceptors,
         );
         registry[type] = controller;
       }
+      // --- CRITICAL SECTION END ---
 
-      // 2. Если модуль еще не инициализирован - запускаем процесс
+      // Ветка A и Ветка B получают свои КОПИИ стека.
+      // Это позволяет безопасно проверять циклы в параллельных ветках.
+      final newStack = {...currentStack, type};
+
+      // Теперь безопасно вызываем await (yield execution)
       if (controller.currentStatus == ModuleStatus.initial) {
-        // Добавляем текущий модуль в стек и рекурсивно инициализируем зависимость
-        final newStack = {...currentStack, type};
-        
-        // Передаем стек для проверки циклов вглубь
         await controller.initialize(registry, resolutionStack: newStack);
-        
       } else if (controller.currentStatus == ModuleStatus.loading) {
-        // Если модуль загружается, это может быть цикл, если он в нашем стеке.
+        // Если модуль уже грузится (его пнула другая ветка), просто ждем.
+        // Проверяем на цикл именно в ЭТОЙ ветке
         if (currentStack.contains(type)) {
            throw Exception(
             'Circular dependency detected (during loading): ${currentStack.join(' -> ')} -> $type'
           );
         }
-        // Иначе это просто параллельная загрузка, ждем.
+        // "Smart Wait": Ждем пока другая ветка закончит работу
         await controller.status.firstWhere((s) => s == ModuleStatus.loaded);
       } else if (controller.currentStatus == ModuleStatus.error) {
-         throw Exception("Dependent module $type failed to load: ${controller.lastError}");
+        throw Exception("Dependent module $type failed to load: ${controller.lastError}");
       }
 
-      resolvedControllers.add(controller);
-    }
+      return controller;
+    });
+
+    // 2. Ждем выполнения всех веток одновременно
+    final resolvedControllers = await Future.wait(futures);
 
     return resolvedControllers;
   }

@@ -145,14 +145,14 @@ packages:
     source: hosted
     version: "1.16.0"
   modularity_contracts:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/contracts"
       relative: true
     source: path
     version: "0.1.0"
   modularity_core:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       path: "../../packages/core"
       relative: true

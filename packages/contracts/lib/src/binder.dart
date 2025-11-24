@@ -34,3 +34,15 @@ abstract class Binder {
   /// Проверяет наличие зависимостей указанного типа (включая родителей и импорты).
   bool contains(Type type);
 }
+
+/// Расширенный интерфейс для Binder, поддерживающий экспорт зависимостей.
+abstract class ExportableBinder implements Binder {
+  /// Включает режим экспорта (регистрация в публичный скоуп).
+  void enableExportMode();
+
+  /// Выключает режим экспорта (регистрация в приватный скоуп).
+  void disableExportMode();
+
+  /// Пытается получить зависимость ТОЛЬКО из публичного скоупа.
+  T? tryGetPublic<T extends Object>();
+}
