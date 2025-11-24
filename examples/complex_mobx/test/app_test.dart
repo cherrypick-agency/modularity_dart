@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:modularity_flutter/modularity_flutter.dart';
 import 'package:complex_mobx/main.dart';
-import 'package:complex_mobx/src/modules/auth/auth_module.dart'; // Import AuthModule
-import 'package:complex_mobx/src/stores/auth_store.dart';
 
 void main() {
   testWidgets('Complex MobX App starts and Login flow works', (tester) async {

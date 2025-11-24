@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:modularity_contracts/modularity_contracts.dart';
 
 class GetItBinder implements ExportableBinder {
-  /// Используем отдельный инстанс GetIt для каждого модуля для изоляции.
-  final GetIt _getIt = GetIt.asNewInstance();
+  late final GetIt _getIt;
+  final bool _useGlobalInstance;
+  final List<FutureOr<void> Function()> _cleanupCallbacks = [];
 
   final Binder? _parent;
   final List<Binder> _imports = [];
@@ -11,7 +13,9 @@ class GetItBinder implements ExportableBinder {
   final Set<Type> _exportedTypes = {};
   bool _isExportMode = false;
 
-  GetItBinder([this._parent]);
+  GetItBinder([this._parent, this._useGlobalInstance = false]) {
+    _getIt = _useGlobalInstance ? GetIt.instance : GetIt.asNewInstance();
+  }
 
   @override
   void enableExportMode() => _isExportMode = true;
@@ -41,8 +45,14 @@ class GetItBinder implements ExportableBinder {
   }
 
   @override
+  bool containsPublic(Type type) {
+    return _exportedTypes.contains(type) && _getIt.isRegistered(type: type);
+  }
+
+  @override
   void eagerSingleton<T extends Object>(T Function() factory) {
     _trackExport<T>();
+    _trackRegistration<T>();
     // GetIt не имеет явного eagerSingleton, регистрируем как singleton с готовым инстансом
     _getIt.registerSingleton<T>(factory());
   }
@@ -50,6 +60,7 @@ class GetItBinder implements ExportableBinder {
   @override
   void factory<T extends Object>(T Function() factory) {
     _trackExport<T>();
+    _trackRegistration<T>();
     _getIt.registerFactory<T>(factory);
   }
 
@@ -65,6 +76,7 @@ class GetItBinder implements ExportableBinder {
   @override
   void instance<T extends Object>(T instance) {
     _trackExport<T>();
+    _trackRegistration<T>();
     _getIt.registerSingleton<T>(instance);
   }
 
@@ -80,6 +92,7 @@ class GetItBinder implements ExportableBinder {
   @override
   void singleton<T extends Object>(T Function() factory) {
     _trackExport<T>();
+    _trackRegistration<T>();
     _getIt.registerLazySingleton<T>(factory);
   }
 
@@ -127,7 +140,24 @@ class GetItBinder implements ExportableBinder {
     }
   }
 
+  void _trackRegistration<T extends Object>() {
+    if (_useGlobalInstance) {
+      _cleanupCallbacks.add(() async {
+        if (_getIt.isRegistered<T>()) {
+          await _getIt.unregister<T>();
+        }
+      });
+    }
+  }
+
   Future<void> reset() async {
-    await _getIt.reset();
+    if (_useGlobalInstance) {
+      for (final callback in _cleanupCallbacks.reversed) {
+        await callback();
+      }
+      _cleanupCallbacks.clear();
+    } else {
+      await _getIt.reset();
+    }
   }
 }

@@ -6,7 +6,6 @@ import 'package:example_auto_route/modules/home/home_module.dart';
 import 'package:example_auto_route/modules/settings/settings_module.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:modularity_flutter/modularity_flutter.dart';
 
 void main() {
   testWidgets(

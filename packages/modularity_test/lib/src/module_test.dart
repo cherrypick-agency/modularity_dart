@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:modularity_contracts/modularity_contracts.dart';
 import 'package:modularity_core/modularity_core.dart';
 import 'test_binder.dart';
 
