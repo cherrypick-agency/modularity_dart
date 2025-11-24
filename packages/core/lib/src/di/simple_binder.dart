@@ -49,7 +49,15 @@ class SimpleBinder implements ExportableBinder {
   void disableExportMode() => _isExportMode = false;
 
   @override
-  void factory<T extends Object>(T Function() factory) {
+  void registerLazySingleton<T extends Object>(T Function() factory) {
+    _register<T>(_Registration(
+      type: _DependencyType.singleton,
+      factory: factory,
+    ));
+  }
+
+  @override
+  void registerFactory<T extends Object>(T Function() factory) {
     _register<T>(_Registration(
       type: _DependencyType.factory,
       factory: factory,
@@ -57,7 +65,7 @@ class SimpleBinder implements ExportableBinder {
   }
 
   @override
-  void instance<T extends Object>(T instance) {
+  void registerSingleton<T extends Object>(T instance) {
     _register<T>(_Registration(
       type: _DependencyType.instance,
       factory: () => instance,
@@ -66,22 +74,12 @@ class SimpleBinder implements ExportableBinder {
   }
 
   @override
-  void singleton<T extends Object>(T Function() factory) {
-    _register<T>(_Registration(
-      type: _DependencyType.singleton,
-      factory: factory,
-    ));
-  }
+  void singleton<T extends Object>(T Function() factory) =>
+      registerLazySingleton(factory);
 
   @override
-  void eagerSingleton<T extends Object>(T Function() factory) {
-    final instance = factory();
-    _register<T>(_Registration(
-      type: _DependencyType.singleton,
-      factory: factory, // Keep factory for potential re-creation if needed?
-      instance: instance,
-    ));
-  }
+  void factory<T extends Object>(T Function() factory) =>
+      registerFactory(factory);
 
   void _register<T extends Object>(_Registration reg) {
     if (_isExportMode) {

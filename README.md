@@ -1,5 +1,7 @@
 # Modularity Framework
 
+![coverage](https://img.shields.io/badge/coverage-61.4%25-yellow)
+
 ![screenshot](image.png)
 
 A modular architecture framework for Flutter applications based on Clean Architecture & SOLID principles, designed for enterprise-scale applications where isolation, testability, and predictable lifecycle are paramount.

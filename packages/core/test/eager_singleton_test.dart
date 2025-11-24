@@ -9,7 +9,7 @@ class Service {
 }
 
 void main() {
-  group('SimpleBinder Eager Singleton', () {
+  group('SimpleBinder Eager Singleton (now registerSingleton)', () {
     late SimpleBinder binder;
 
     setUp(() {
@@ -18,27 +18,31 @@ void main() {
     });
 
     test('lazy singleton is NOT created until get()', () {
-      binder.singleton<Service>(() => Service());
+      binder.registerLazySingleton<Service>(() => Service());
       expect(Service.instanceCount, 0);
 
       binder.get<Service>();
       expect(Service.instanceCount, 1);
     });
 
-    test('eager singleton IS created immediately', () {
-      binder.eagerSingleton<Service>(() => Service());
+    test('registerSingleton (eager) IS created immediately', () {
+      // Eager logic is now: create instance -> register
+      binder.registerSingleton<Service>(Service());
       expect(Service.instanceCount, 1);
 
       binder.get<Service>();
       expect(Service.instanceCount, 1);
     });
 
-    test('eager singleton persists across get calls', () {
-      binder.eagerSingleton<Service>(() => Service());
+    test('registerSingleton persists across get calls', () {
+      final service = Service();
+      binder.registerSingleton<Service>(service);
+
       final s1 = binder.get<Service>();
       final s2 = binder.get<Service>();
 
       expect(s1, equals(s2));
+      expect(s1, equals(service));
       expect(Service.instanceCount, 1);
     });
   });

@@ -50,3 +50,13 @@ scripts:
   test:all:
     run: melos run test:core && melos run test:flutter && melos run test:cli && melos run test:infra && melos run test:examples
     description: Run all tests across the entire workspace.
+
+  test:coverage:
+    exec: flutter test --coverage
+    packageFilters:
+      dirExists: test
+    description: Run tests with coverage for all packages with a test directory.
+
+  coverage:report:
+    run: melos run test:coverage && ./tool/generate_html_report.sh
+    description: Run tests with coverage and generate a combined HTML report locally.

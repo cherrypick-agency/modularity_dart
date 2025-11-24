@@ -76,8 +76,12 @@ app.*.map.json
 
 # Coverage
 coverage/
+
+coverage/
 test/coverage/
 
 # Melos
 melos_modularity.iml
+pubspec_overrides.yaml
+
 

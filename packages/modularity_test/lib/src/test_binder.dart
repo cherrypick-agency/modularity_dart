@@ -31,28 +31,30 @@ class TestBinder implements Binder {
   List<Type> get resolvedTypes => List.unmodifiable(_resolvedTypes);
 
   @override
-  void singleton<T extends Object>(T Function() factory) {
+  void registerLazySingleton<T extends Object>(T Function() factory) {
     _registeredSingletons.add(T);
-    _delegate.singleton<T>(factory);
+    _delegate.registerLazySingleton<T>(factory);
   }
 
   @override
-  void eagerSingleton<T extends Object>(T Function() factory) {
-    _registeredEagerSingletons.add(T);
-    _delegate.eagerSingleton<T>(factory);
-  }
-
-  @override
-  void factory<T extends Object>(T Function() factory) {
+  void registerFactory<T extends Object>(T Function() factory) {
     _registeredFactories.add(T);
-    _delegate.factory<T>(factory);
+    _delegate.registerFactory<T>(factory);
   }
 
   @override
-  void instance<T extends Object>(T instance) {
+  void registerSingleton<T extends Object>(T instance) {
     _registeredInstances.add(T);
-    _delegate.instance<T>(instance);
+    _delegate.registerSingleton<T>(instance);
   }
+
+  @override
+  void singleton<T extends Object>(T Function() factory) =>
+      registerLazySingleton(factory);
+
+  @override
+  void factory<T extends Object>(T Function() factory) =>
+      registerFactory(factory);
 
   @override
   T get<T extends Object>() {
@@ -88,9 +90,6 @@ class TestBinder implements Binder {
 
   /// Checks if a type was registered as Singleton.
   bool hasSingleton<T>() => _registeredSingletons.contains(T);
-
-  /// Checks if a type was registered as Eager Singleton.
-  bool hasEagerSingleton<T>() => _registeredEagerSingletons.contains(T);
 
   /// Checks if a type was registered as Factory.
   bool hasFactory<T>() => _registeredFactories.contains(T);

@@ -50,19 +50,33 @@ class GetItBinder implements ExportableBinder {
   }
 
   @override
-  void eagerSingleton<T extends Object>(T Function() factory) {
+  void registerLazySingleton<T extends Object>(T Function() factory) {
     _trackExport<T>();
     _trackRegistration<T>();
-    // GetIt не имеет явного eagerSingleton, регистрируем как singleton с готовым инстансом
-    _getIt.registerSingleton<T>(factory());
+    _getIt.registerLazySingleton<T>(factory);
   }
 
   @override
-  void factory<T extends Object>(T Function() factory) {
+  void registerFactory<T extends Object>(T Function() factory) {
     _trackExport<T>();
     _trackRegistration<T>();
     _getIt.registerFactory<T>(factory);
   }
+
+  @override
+  void registerSingleton<T extends Object>(T instance) {
+    _trackExport<T>();
+    _trackRegistration<T>();
+    _getIt.registerSingleton<T>(instance);
+  }
+
+  @override
+  void singleton<T extends Object>(T Function() factory) =>
+      registerLazySingleton(factory);
+
+  @override
+  void factory<T extends Object>(T Function() factory) =>
+      registerFactory(factory);
 
   @override
   T get<T extends Object>() {
@@ -74,26 +88,12 @@ class GetItBinder implements ExportableBinder {
   }
 
   @override
-  void instance<T extends Object>(T instance) {
-    _trackExport<T>();
-    _trackRegistration<T>();
-    _getIt.registerSingleton<T>(instance);
-  }
-
-  @override
   T parent<T extends Object>() {
     final object = tryParent<T>();
     if (object == null) {
       throw Exception('Dependency of type $T not found in parent scope.');
     }
     return object;
-  }
-
-  @override
-  void singleton<T extends Object>(T Function() factory) {
-    _trackExport<T>();
-    _trackRegistration<T>();
-    _getIt.registerLazySingleton<T>(factory);
   }
 
   @override

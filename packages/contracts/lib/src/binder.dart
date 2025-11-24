@@ -1,19 +1,27 @@
 /// Интерфейс для регистрации зависимостей.
 /// Абстрагирует конкретную реализацию DI (будь то GetIt, карта или что-то еще).
 abstract class Binder {
-  /// Регистрирует синглтон. Создается один раз при первом запросе (lazy)
-  /// или сразу (в зависимости от реализации, но по стандарту lazy).
+  /// Алиас для [registerLazySingleton].
+  /// Регистрирует синглтон. Создается один раз при первом запросе (lazy).
   void singleton<T extends Object>(T Function() factory);
 
-  /// Регистрирует "жадный" синглтон.
-  /// Создается СРАЗУ же в момент вызова этого метода.
-  void eagerSingleton<T extends Object>(T Function() factory);
+  /// Регистрирует ленивый синглтон.
+  /// Создается один раз при первом запросе.
+  /// Аналог [singleton] в Binder, переименован для соответствия GetIt API.
+  void registerLazySingleton<T extends Object>(T Function() factory);
 
+  /// Алиас для [registerFactory].
   /// Регистрирует фабрику. Создается каждый раз при запросе.
   void factory<T extends Object>(T Function() factory);
 
-  /// Регистрирует уже созданный инстанс.
-  void instance<T extends Object>(T instance);
+  /// Регистрирует фабрику.
+  /// Создается каждый раз при запросе.
+  /// Аналог [factory] в Binder, переименован для соответствия GetIt API.
+  void registerFactory<T extends Object>(T Function() factory);
+
+  /// Регистрирует уже созданный инстанс (Eager Singleton).
+  /// Заменяет старые методы [instance] и [eagerSingleton].
+  void registerSingleton<T extends Object>(T instance);
 
   /// Получает зависимость типа [T].
   /// [moduleId] - опциональный идентификатор модуля, который запрашивает зависимость (для скоупинга).
