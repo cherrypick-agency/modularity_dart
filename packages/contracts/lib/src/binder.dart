@@ -45,4 +45,7 @@ abstract class ExportableBinder implements Binder {
 
   /// Пытается получить зависимость ТОЛЬКО из публичного скоупа.
   T? tryGetPublic<T extends Object>();
+
+  /// Проверяет наличие публичной зависимости.
+  bool containsPublic(Type type);
 }
