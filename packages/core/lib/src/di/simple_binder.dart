@@ -22,7 +22,7 @@ class SimpleBinder implements ExportableBinder {
 
   /// Список импортированных модулей (их публичные биндеры).
   final List<Binder> _imports;
-  
+
   /// Родительский биндер (Scope chaining).
   final Binder? _parent;
 
@@ -100,12 +100,10 @@ class SimpleBinder implements ExportableBinder {
         ..._privateRegistrations.keys,
         ..._publicRegistrations.keys
       ].map((t) => t.toString()).join(', ');
-      
-      throw Exception(
-          'Dependency of type $T not found.\n'
+
+      throw Exception('Dependency of type $T not found.\n'
           'Checked: Current Scope, Imports, Parent.\n'
-          'Available in Current Scope: [$available]'
-      );
+          'Available in Current Scope: [$available]');
     }
     return object;
   }
@@ -130,7 +128,7 @@ class SimpleBinder implements ExportableBinder {
         if (found != null) return found;
       }
     }
-    
+
     // 3. Search in Parent (Implicit scope chaining)
     // Ищем в родителе как обычный get (он сам решит свои права доступа)
     final parentFound = _parent?.tryGet<T>();
@@ -138,16 +136,16 @@ class SimpleBinder implements ExportableBinder {
 
     return null;
   }
-  
+
   @override
   T parent<T extends Object>() {
     final object = tryParent<T>();
     if (object == null) {
-       throw Exception('Dependency of type $T not found in parent scope.');
+      throw Exception('Dependency of type $T not found in parent scope.');
     }
     return object;
   }
-  
+
   @override
   T? tryParent<T extends Object>() {
     return _parent?.tryGet<T>();
@@ -156,18 +154,19 @@ class SimpleBinder implements ExportableBinder {
   @override
   bool contains(Type type) {
     // 1. Local
-    if (_privateRegistrations.containsKey(type) || _publicRegistrations.containsKey(type)) {
+    if (_privateRegistrations.containsKey(type) ||
+        _publicRegistrations.containsKey(type)) {
       return true;
     }
 
     // 2. Imports
     for (final importedBinder in _imports) {
-       // Correctly check only public exports for imports
-       if (importedBinder is ExportableBinder) {
-         if (importedBinder.containsPublic(type)) return true;
-       } else {
-         if (importedBinder.contains(type)) return true;
-       }
+      // Correctly check only public exports for imports
+      if (importedBinder is ExportableBinder) {
+        if (importedBinder.containsPublic(type)) return true;
+      } else {
+        if (importedBinder.contains(type)) return true;
+      }
     }
 
     // 3. Parent
@@ -175,14 +174,14 @@ class SimpleBinder implements ExportableBinder {
 
     return false;
   }
-  
+
   /// Ищет ТОЛЬКО в публичных зависимостях (для использования другими модулями).
   @override
   T? tryGetPublic<T extends Object>() {
     if (_publicRegistrations.containsKey(T)) {
       return _resolveRegistration<T>(_publicRegistrations[T]!);
     }
-    return null; 
+    return null;
   }
 
   @override

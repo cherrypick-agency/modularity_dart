@@ -7,7 +7,8 @@ class ModularityRoot extends InheritedWidget {
   final Map<Type, ModuleController> _registry = {};
   final BinderFactory binderFactory;
   final WidgetBuilder? defaultLoadingBuilder;
-  final Widget Function(BuildContext, Object? error, VoidCallback retry)? defaultErrorBuilder;
+  final Widget Function(BuildContext, Object? error, VoidCallback retry)?
+      defaultErrorBuilder;
 
   ModularityRoot({
     Key? key,
@@ -32,10 +33,15 @@ class ModularityRoot extends InheritedWidget {
     }
     return root;
   }
-  
-  static Map<Type, ModuleController> registryOf(BuildContext context) => of(context)._registry;
-  static BinderFactory binderFactoryOf(BuildContext context) => of(context).binderFactory;
-  
-  static WidgetBuilder? defaultLoadingBuilderOf(BuildContext context) => of(context).defaultLoadingBuilder;
-  static Widget Function(BuildContext, Object?, VoidCallback)? defaultErrorBuilderOf(BuildContext context) => of(context).defaultErrorBuilder;
+
+  static Map<Type, ModuleController> registryOf(BuildContext context) =>
+      of(context)._registry;
+  static BinderFactory binderFactoryOf(BuildContext context) =>
+      of(context).binderFactory;
+
+  static WidgetBuilder? defaultLoadingBuilderOf(BuildContext context) =>
+      of(context).defaultLoadingBuilder;
+  static Widget Function(BuildContext, Object?, VoidCallback)?
+      defaultErrorBuilderOf(BuildContext context) =>
+          of(context).defaultErrorBuilder;
 }

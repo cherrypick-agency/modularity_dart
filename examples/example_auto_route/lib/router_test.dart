@@ -6,5 +6,3 @@ class MyRouter extends _$MyRouter {
   @override
   List<AutoRoute> get routes => [];
 }
-
-

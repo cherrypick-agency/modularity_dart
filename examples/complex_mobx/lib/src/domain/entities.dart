@@ -12,4 +12,3 @@ class User {
 
   const User(this.username, this.token);
 }
-

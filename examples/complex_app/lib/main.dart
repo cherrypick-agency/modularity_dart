@@ -14,7 +14,9 @@ class MyApp extends StatelessWidget {
     return ModularityRoot(
       child: MaterialApp(
         title: 'Complex Modularity App',
-        navigatorObservers: [Modularity.observer], // Enable RouteBound retention
+        navigatorObservers: [
+          Modularity.observer
+        ], // Enable RouteBound retention
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
@@ -26,4 +28,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

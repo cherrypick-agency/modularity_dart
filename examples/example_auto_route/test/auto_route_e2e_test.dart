@@ -9,7 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
 
 void main() {
-  testWidgets('AutoRoute E2E Flow: Login -> Home -> Details -> Settings -> Logout',
+  testWidgets(
+      'AutoRoute E2E Flow: Login -> Home -> Details -> Settings -> Logout',
       (WidgetTester tester) async {
     // 1. Start App
     await tester.pumpWidget(const MyApp());
@@ -60,5 +61,3 @@ void main() {
     expect(find.byType(AuthPage), findsOneWidget);
   });
 }
-
-

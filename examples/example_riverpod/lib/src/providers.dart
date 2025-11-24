@@ -12,4 +12,3 @@ class AuthService {
 final authServiceProvider = Provider<AuthService>((ref) {
   throw UnimplementedError('Override this in ModuleScope');
 });
-

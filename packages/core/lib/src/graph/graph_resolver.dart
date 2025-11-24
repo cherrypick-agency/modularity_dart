@@ -54,14 +54,14 @@ class GraphResolver {
         // Если модуль уже грузится (его пнула другая ветка), просто ждем.
         // Проверяем на цикл именно в ЭТОЙ ветке
         if (currentStack.contains(type)) {
-           throw Exception(
-            'Circular dependency detected (during loading): ${currentStack.join(' -> ')} -> $type'
-          );
+          throw Exception(
+              'Circular dependency detected (during loading): ${currentStack.join(' -> ')} -> $type');
         }
         // "Smart Wait": Ждем пока другая ветка закончит работу
         await controller.status.firstWhere((s) => s == ModuleStatus.loaded);
       } else if (controller.currentStatus == ModuleStatus.error) {
-        throw Exception("Dependent module $type failed to load: ${controller.lastError}");
+        throw Exception(
+            "Dependent module $type failed to load: ${controller.lastError}");
       }
 
       return controller;

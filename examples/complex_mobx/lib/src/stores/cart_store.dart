@@ -30,4 +30,3 @@ abstract class _CartStore with Store {
     items.clear();
   }
 }
-

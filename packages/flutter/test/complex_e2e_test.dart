@@ -26,6 +26,7 @@ class SharedModule extends Module {
   void exports(Binder i) {
     i.singleton<SharedService>(() => SharedService());
   }
+
   @override
   void binds(Binder i) {}
 }
@@ -38,6 +39,7 @@ class ModuleA extends Module {
   void exports(Binder i) {
     i.singleton<ServiceA>(() => ServiceA(i.get<SharedService>()));
   }
+
   @override
   void binds(Binder i) {}
 }
@@ -50,6 +52,7 @@ class ModuleB extends Module {
   void exports(Binder i) {
     i.singleton<ServiceB>(() => ServiceB(i.get<SharedService>()));
   }
+
   @override
   void binds(Binder i) {}
 }
@@ -95,7 +98,7 @@ class ChildModule extends Module {
 // -----------------------------------------------------------------------------
 class FlakyModule extends Module {
   static int attempts = 0;
-  
+
   @override
   void binds(Binder i) {}
 
@@ -116,7 +119,7 @@ class FlakyModule extends Module {
 class TestPage extends StatelessWidget {
   final String title;
   final VoidCallback? onCheck;
-  
+
   const TestPage(this.title, {this.onCheck});
 
   @override
@@ -128,10 +131,10 @@ class TestPage extends StatelessWidget {
 
 void main() {
   group('Complex E2E Tests', () {
-    
-    testWidgets('Diamond Dependency: Shared module is initialized ONCE', (tester) async {
+    testWidgets('Diamond Dependency: Shared module is initialized ONCE',
+        (tester) async {
       SharedService.instanceCount = 0;
-      
+
       await tester.pumpWidget(
         ModularityRoot(
           child: MaterialApp(
@@ -143,7 +146,7 @@ void main() {
                   // Resolve A and B
                   final serviceA = binder.get<ServiceA>();
                   final serviceB = binder.get<ServiceB>();
-                  
+
                   // They should share the SAME SharedService instance
                   // And SharedService should be created exactly once
                   return Column(
@@ -159,15 +162,16 @@ void main() {
           ),
         ),
       );
-      
+
       await tester.pumpAndSettle();
-      
+
       expect(find.text('Shared ID A: 1'), findsOneWidget);
       expect(find.text('Shared ID B: 1'), findsOneWidget);
       expect(find.text('Total Instances: 1'), findsOneWidget);
     });
 
-    testWidgets('Scope Chaining: Child finds GrandParent dependency', (tester) async {
+    testWidgets('Scope Chaining: Child finds GrandParent dependency',
+        (tester) async {
       await tester.pumpWidget(
         ModularityRoot(
           child: MaterialApp(
@@ -181,7 +185,7 @@ void main() {
                     builder: (context) {
                       final binder = ModuleProvider.of(context);
                       // Should look up recursively: Child -> Parent -> GrandParent
-                      final data = binder.get<GrandData>(); 
+                      final data = binder.get<GrandData>();
                       return Text(data.value);
                     },
                   ),
@@ -191,14 +195,15 @@ void main() {
           ),
         ),
       );
-      
+
       await tester.pumpAndSettle();
       expect(find.text('GrandSecret'), findsOneWidget);
     });
 
-    testWidgets('Error Recovery: Retry logic works in ModuleScope', (tester) async {
+    testWidgets('Error Recovery: Retry logic works in ModuleScope',
+        (tester) async {
       FlakyModule.attempts = 0;
-      
+
       await tester.pumpWidget(
         ModularityRoot(
           child: MaterialApp(
@@ -209,30 +214,30 @@ void main() {
           ),
         ),
       );
-      
+
       // First pump -> Should ideally show loading, but we skip checking to avoid race condition flakes
-      await tester.pump(); 
+      await tester.pump();
       // expect(find.text('Loading...'), findsOneWidget); // Skipped
-      
+
       // Wait for error (advance time for delay)
-      await tester.pump(const Duration(milliseconds: 100)); 
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Module Init Failed'), findsOneWidget);
       expect(find.text('Exception: Init Failed'), findsOneWidget);
-      
+
       // Tap Retry
       await tester.tap(find.text('Retry'));
-      
+
       // Pump to rebuild
-      await tester.pump(); 
-      
+      await tester.pump();
+
       // Skipped Loading Check
       // expect(find.text('Loading...'), findsOneWidget);
-      
+
       // Settle (should succeed now, attempts=2)
       // Need to advance time for the delay in onInit
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pumpAndSettle();
-      
+
       expect(find.text('Success'), findsOneWidget);
       expect(FlakyModule.attempts, 2);
     });

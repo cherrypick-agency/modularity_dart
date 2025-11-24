@@ -10,4 +10,3 @@ abstract class ModularityLogger {
     StackTrace? stackTrace,
   });
 }
-

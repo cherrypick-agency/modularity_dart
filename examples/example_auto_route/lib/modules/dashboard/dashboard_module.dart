@@ -27,7 +27,8 @@ class DashboardPage extends StatelessWidget {
             onTap: tabsRouter.setActiveIndex,
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.settings), label: 'Settings'),
             ],
           );
         },
@@ -35,4 +36,3 @@ class DashboardPage extends StatelessWidget {
     );
   }
 }
-

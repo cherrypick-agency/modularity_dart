@@ -7,4 +7,3 @@ class GetItBinderFactory implements BinderFactory {
     return GetItBinder(parent);
   }
 }
-

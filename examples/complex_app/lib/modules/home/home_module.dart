@@ -6,13 +6,13 @@ import '../profile/profile_module.dart';
 class HomeModule extends Module {
   @override
   List<Module> get imports => [
-    AuthModule(), 
-  ];
+        AuthModule(),
+      ];
 
   @override
   List<Module> get submodules => [
-    ProfileModule(),
-  ];
+        ProfileModule(),
+      ];
 
   @override
   void binds(Binder i) {
@@ -39,7 +39,8 @@ class HomePage extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 await authService.login();
-                (context as Element).markNeedsBuild(); // Hack for simplicity in this demo
+                (context as Element)
+                    .markNeedsBuild(); // Hack for simplicity in this demo
               },
               child: const Text('Login'),
             ),

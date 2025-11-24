@@ -55,9 +55,8 @@ void main() {
       try {
         await controller.initialize({});
       } catch (_) {}
-      
+
       expect(interceptor.log, ['onInit', 'onError']);
     });
   });
 }
-

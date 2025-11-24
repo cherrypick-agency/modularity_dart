@@ -4,4 +4,3 @@ abstract class Configurable<T> {
   /// Вызывается фреймворком перед [Module.binds] и [Module.onInit].
   void configure(T args);
 }
-

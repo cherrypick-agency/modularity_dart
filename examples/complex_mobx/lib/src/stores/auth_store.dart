@@ -22,10 +22,10 @@ abstract class _AuthStore with Store {
   Future<void> login(String username, String password) async {
     isLoading = true;
     errorMessage = null;
-    
+
     // Simulate API call
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     if (password == 'password') {
       user = User(username, 'token_123');
     } else {

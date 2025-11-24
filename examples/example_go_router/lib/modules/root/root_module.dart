@@ -14,5 +14,3 @@ class RootModule extends Module {
     i.singleton<AuthService>(() => AuthService());
   }
 }
-
-

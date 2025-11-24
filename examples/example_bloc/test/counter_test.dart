@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
 
 void main() {
-  testWidgets('Bloc Example: Counter increments and resolves Cubit', (tester) async {
+  testWidgets('Bloc Example: Counter increments and resolves Cubit',
+      (tester) async {
     // 1. Load App
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
@@ -24,4 +25,3 @@ void main() {
     expect(find.text('Count: 1'), findsOneWidget);
   });
 }
-

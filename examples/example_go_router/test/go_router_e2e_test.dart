@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('GoRouter E2E Flow: Login -> Home -> Details -> Settings -> Logout',
+  testWidgets(
+      'GoRouter E2E Flow: Login -> Home -> Details -> Settings -> Logout',
       (WidgetTester tester) async {
     // 1. Start App
     await tester.pumpWidget(const MyApp());
@@ -18,11 +19,11 @@ void main() {
     expect(find.byType(AuthPage), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Login'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Login'), findsOneWidget);
-    
+
     // Verify AuthModule is active
     // Note: Finder by type for ModuleScope might return multiple if we don't distinguish.
     // But AuthPage is child of ModuleScope(AuthModule), so valid.
-    
+
     // 2. Perform Login
     await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
     await tester.pumpAndSettle();
@@ -33,7 +34,7 @@ void main() {
     expect(find.text('Item 0'), findsOneWidget);
 
     // Verify RootModule, DashboardModule, HomeModule are active
-    // Just checking widgets is enough to imply modules are likely initialized, 
+    // Just checking widgets is enough to imply modules are likely initialized,
     // but strictly we can check binding if we wanted (not easy from widget test without key).
 
     // 3. Navigate to Details
@@ -44,9 +45,9 @@ void main() {
     expect(find.byType(DetailsPage), findsOneWidget);
     expect(find.text('Details 1'), findsOneWidget);
     expect(find.text('AuthService is available here too!'), findsOneWidget);
-    
+
     // Verify DetailsModule expects AuthService -> Should not throw
-    
+
     // 4. Go Back
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
@@ -61,7 +62,7 @@ void main() {
 
     // Verify Settings Page
     expect(find.byType(SettingsPage), findsOneWidget);
-    
+
     // 6. Logout
     await tester.tap(find.text('Logout'));
     await tester.pumpAndSettle();

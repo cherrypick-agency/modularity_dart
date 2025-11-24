@@ -30,5 +30,3 @@ class SettingsPage extends StatelessWidget {
     );
   }
 }
-
-

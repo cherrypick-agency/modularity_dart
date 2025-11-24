@@ -21,7 +21,8 @@ class CartPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Observer(
-          builder: (_) => Text('Cart (\$${cartStore.totalPrice.toStringAsFixed(2)})'),
+          builder: (_) =>
+              Text('Cart (\$${cartStore.totalPrice.toStringAsFixed(2)})'),
         ),
       ),
       body: Observer(
@@ -47,4 +48,3 @@ class CartPage extends StatelessWidget {
     );
   }
 }
-

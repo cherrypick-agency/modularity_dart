@@ -21,16 +21,16 @@ abstract class Binder {
 
   /// Пытается получить зависимость, возвращает null если не найдено.
   T? tryGet<T extends Object>();
-  
+
   /// Получает зависимость из родительского скоупа (Explicit Parent Lookup).
   T parent<T extends Object>();
-  
+
   /// Пытается получить зависимость из родительского скоупа.
   T? tryParent<T extends Object>();
-  
+
   /// Добавляет внешние биндеры (импорты), в которых нужно искать зависимости.
   void addImports(List<Binder> binders);
-  
+
   /// Проверяет наличие зависимостей указанного типа (включая родителей и импорты).
   bool contains(Type type);
 }

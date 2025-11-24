@@ -9,8 +9,8 @@ import '../details/product_details_module.dart';
 class HomeModule extends Module {
   @override
   List<Module> get submodules => [
-    ProductDetailsModule(),
-  ];
+        ProductDetailsModule(),
+      ];
 
   @override
   List<Type> get expects => [CartStore];
@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
     final binder = ModuleProvider.of(context);
     productStore = binder.get<ProductStore>();
     cartStore = binder.get<CartStore>();
-    
+
     // Auto load
     if (productStore.products.isEmpty) {
       productStore.loadProducts();

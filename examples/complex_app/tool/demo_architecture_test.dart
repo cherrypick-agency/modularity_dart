@@ -23,7 +23,7 @@ class AuthFeature extends Module {
 }
 
 class CartFeature extends Module {
-   @override
+  @override
   void binds(Binder i) {}
 }
 
@@ -37,7 +37,7 @@ class CheckoutFeature extends Module {
 
 class ProductDetailsFeature extends Module implements Configurable<int> {
   late int productId;
-  
+
   // Empty constructor for static graph
   ProductDetailsFeature();
 
@@ -53,8 +53,8 @@ class ProductDetailsFeature extends Module implements Configurable<int> {
 class ProductListFeature extends Module {
   @override
   List<Module> get submodules => [
-    ProductDetailsFeature(), // Composition: List owns Details
-  ];
+        ProductDetailsFeature(), // Composition: List owns Details
+      ];
 
   @override
   void binds(Binder i) {}
@@ -63,10 +63,10 @@ class ProductListFeature extends Module {
 class ShopFeature extends Module {
   @override
   List<Module> get submodules => [
-    ProductListFeature(),
-    CartFeature(),
-    CheckoutFeature(),
-  ];
+        ProductListFeature(),
+        CartFeature(),
+        CheckoutFeature(),
+      ];
 
   @override
   List<Module> get imports => [AnalyticsModule()];
@@ -86,16 +86,16 @@ class AccountFeature extends Module {
 class AppModule extends Module {
   @override
   List<Module> get submodules => [
-    ShopFeature(),
-    AccountFeature(),
-    AuthFeature(),
-  ];
-  
+        ShopFeature(),
+        AccountFeature(),
+        AuthFeature(),
+      ];
+
   @override
   List<Module> get imports => [
-    NetworkModule(),
-    AnalyticsModule(),
-  ];
+        NetworkModule(),
+        AnalyticsModule(),
+      ];
 
   @override
   void binds(Binder i) {}
@@ -107,5 +107,3 @@ void main() {
     await GraphVisualizer.visualize(AppModule());
   });
 }
-
-

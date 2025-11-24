@@ -22,7 +22,7 @@ import 'package:example_auto_route/modules/settings/settings_module.dart'
 /// [_i1.AuthPage]
 class AuthRoute extends _i6.PageRouteInfo<void> {
   const AuthRoute({List<_i6.PageRouteInfo>? children})
-    : super(AuthRoute.name, initialChildren: children);
+      : super(AuthRoute.name, initialChildren: children);
 
   static const String name = 'AuthRoute';
 
@@ -38,7 +38,7 @@ class AuthRoute extends _i6.PageRouteInfo<void> {
 /// [_i2.DashboardPage]
 class DashboardRoute extends _i6.PageRouteInfo<void> {
   const DashboardRoute({List<_i6.PageRouteInfo>? children})
-    : super(DashboardRoute.name, initialChildren: children);
+      : super(DashboardRoute.name, initialChildren: children);
 
   static const String name = 'DashboardRoute';
 
@@ -54,11 +54,11 @@ class DashboardRoute extends _i6.PageRouteInfo<void> {
 /// [_i3.DetailsPage]
 class DetailsRoute extends _i6.PageRouteInfo<DetailsRouteArgs> {
   DetailsRoute({required String id, List<_i6.PageRouteInfo>? children})
-    : super(
-        DetailsRoute.name,
-        args: DetailsRouteArgs(id: id),
-        initialChildren: children,
-      );
+      : super(
+          DetailsRoute.name,
+          args: DetailsRouteArgs(id: id),
+          initialChildren: children,
+        );
 
   static const String name = 'DetailsRoute';
 
@@ -86,7 +86,7 @@ class DetailsRouteArgs {
 /// [_i4.HomePage]
 class HomeRoute extends _i6.PageRouteInfo<void> {
   const HomeRoute({List<_i6.PageRouteInfo>? children})
-    : super(HomeRoute.name, initialChildren: children);
+      : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
@@ -102,7 +102,7 @@ class HomeRoute extends _i6.PageRouteInfo<void> {
 /// [_i5.SettingsPage]
 class SettingsRoute extends _i6.PageRouteInfo<void> {
   const SettingsRoute({List<_i6.PageRouteInfo>? children})
-    : super(SettingsRoute.name, initialChildren: children);
+      : super(SettingsRoute.name, initialChildren: children);
 
   static const String name = 'SettingsRoute';
 

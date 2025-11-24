@@ -5,7 +5,7 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 class Modularity {
   /// Global RouteObserver for Retention Policy.
   static final RouteObserver<ModalRoute> observer = RouteObserver<ModalRoute>();
-  
+
   /// Global list of ModuleInterceptors.
   static final List<ModuleInterceptor> interceptors = [];
 }

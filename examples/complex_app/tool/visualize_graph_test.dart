@@ -8,5 +8,3 @@ void main() {
     await GraphVisualizer.visualize(HomeModule());
   });
 }
-
-

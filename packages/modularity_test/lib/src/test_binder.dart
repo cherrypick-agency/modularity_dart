@@ -4,7 +4,7 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 /// Useful for testing module behavior.
 class TestBinder implements Binder {
   final Binder _delegate;
-  
+
   final List<Type> _registeredSingletons = [];
   final List<Type> _registeredEagerSingletons = [];
   final List<Type> _registeredFactories = [];
@@ -14,17 +14,19 @@ class TestBinder implements Binder {
   TestBinder(this._delegate);
 
   /// List of types registered as Singletons.
-  List<Type> get registeredSingletons => List.unmodifiable(_registeredSingletons);
-  
+  List<Type> get registeredSingletons =>
+      List.unmodifiable(_registeredSingletons);
+
   /// List of types registered as Eager Singletons.
-  List<Type> get registeredEagerSingletons => List.unmodifiable(_registeredEagerSingletons);
-  
+  List<Type> get registeredEagerSingletons =>
+      List.unmodifiable(_registeredEagerSingletons);
+
   /// List of types registered as Factories.
   List<Type> get registeredFactories => List.unmodifiable(_registeredFactories);
-  
+
   /// List of types registered as Instances.
   List<Type> get registeredInstances => List.unmodifiable(_registeredInstances);
-  
+
   /// List of types that were resolved (get/tryGet).
   List<Type> get resolvedTypes => List.unmodifiable(_resolvedTypes);
 
@@ -83,20 +85,19 @@ class TestBinder implements Binder {
   bool contains(Type type) {
     return _delegate.contains(type);
   }
-  
+
   /// Checks if a type was registered as Singleton.
   bool hasSingleton<T>() => _registeredSingletons.contains(T);
 
   /// Checks if a type was registered as Eager Singleton.
   bool hasEagerSingleton<T>() => _registeredEagerSingletons.contains(T);
-  
+
   /// Checks if a type was registered as Factory.
   bool hasFactory<T>() => _registeredFactories.contains(T);
-  
+
   /// Checks if a type was registered as Instance.
   bool hasInstance<T>() => _registeredInstances.contains(T);
-  
+
   /// Checks if a type was resolved.
   bool wasResolved<T>() => _resolvedTypes.contains(T);
 }
-

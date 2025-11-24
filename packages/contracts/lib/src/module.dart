@@ -32,7 +32,7 @@ abstract class Module {
   /// Modules listed here should use the [Configurable] interface for runtime parameters
   /// instead of constructor arguments, allowing for clean static instantiation.
   List<Module> get submodules => [];
-  
+
   /// Список типов, которые ОБЯЗАН предоставить родительский скоуп.
   /// Проверяется при старте. Если типа нет — инициализация падает с ошибкой.
   List<Type> get expects => [];

@@ -18,7 +18,8 @@ class CounterPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // 2. Provide Cubit using BlocProvider, resolving it from ModuleProvider
     return BlocProvider(
-      create: (context) => ModuleProvider.of(context, listen: false).get<CounterCubit>(),
+      create: (context) =>
+          ModuleProvider.of(context, listen: false).get<CounterCubit>(),
       child: const _CounterView(),
     );
   }
@@ -34,7 +35,8 @@ class _CounterView extends StatelessWidget {
       body: Center(
         child: BlocBuilder<CounterCubit, int>(
           builder: (context, count) {
-            return Text('Count: $count', style: Theme.of(context).textTheme.headlineMedium);
+            return Text('Count: $count',
+                style: Theme.of(context).textTheme.headlineMedium);
           },
         ),
       ),
@@ -45,4 +47,3 @@ class _CounterView extends StatelessWidget {
     );
   }
 }
-

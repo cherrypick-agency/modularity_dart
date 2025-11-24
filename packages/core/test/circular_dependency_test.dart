@@ -29,21 +29,22 @@ void main() {
   group('Circular Dependency Detection', () {
     test('detects direct circular dependency (A -> B -> A)', () async {
       final controller = ModuleController(ModuleA());
-      
+
       expect(
         () => controller.initialize({}),
-        throwsA(predicate((e) => e.toString().contains('Circular dependency detected'))),
+        throwsA(predicate(
+            (e) => e.toString().contains('Circular dependency detected'))),
       );
     });
 
     test('detects self-dependency (A -> A)', () async {
       final controller = ModuleController(ModuleSelf());
-      
+
       expect(
         () => controller.initialize({}),
-        throwsA(predicate((e) => e.toString().contains('Circular dependency detected'))),
+        throwsA(predicate(
+            (e) => e.toString().contains('Circular dependency detected'))),
       );
     });
   });
 }
-

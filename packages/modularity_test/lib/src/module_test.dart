@@ -4,7 +4,7 @@ import 'package:modularity_core/modularity_core.dart';
 import 'test_binder.dart';
 
 /// Test helper to verify module lifecycle.
-/// 
+///
 /// Example:
 /// ```dart
 /// await testModule(
@@ -25,12 +25,10 @@ Future<void> testModule<T extends Module>(
   final realBinder = factory.create();
   final testBinder = TestBinder(realBinder);
 
-  final controller = ModuleController(
-    module, 
-    binder: testBinder, // Inject TestBinder
-    overrides: overrides
-  );
-  
+  final controller = ModuleController(module,
+      binder: testBinder, // Inject TestBinder
+      overrides: overrides);
+
   try {
     await controller.initialize({});
     await body(module, testBinder);

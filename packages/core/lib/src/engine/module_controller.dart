@@ -12,7 +12,7 @@ class ModuleController {
   final StreamController<ModuleStatus> _statusController;
   final void Function(Binder)? overrides;
   final List<ModuleInterceptor> interceptors;
-  
+
   /// Ссылка на контроллеры импортируемых модулей.
   final List<ModuleController> importedControllers = [];
 
@@ -43,11 +43,9 @@ class ModuleController {
       } catch (e) {
         // Handle generic type mismatch gracefully or rethrow
         // If we pass wrong type to configure(T args), Dart throws TypeError.
-        throw Exception(
-          "Module ${module.runtimeType} failed to configure: "
-          "Expected arguments of correct type for Configurable<T>.\n"
-          "Error: $e"
-        );
+        throw Exception("Module ${module.runtimeType} failed to configure: "
+            "Expected arguments of correct type for Configurable<T>.\n"
+            "Error: $e");
       }
     }
   }
@@ -57,7 +55,8 @@ class ModuleController {
     Map<Type, ModuleController> globalModuleRegistry, {
     Set<Type>? resolutionStack,
   }) async {
-    if (_currentStatus == ModuleStatus.loading || _currentStatus == ModuleStatus.loaded) {
+    if (_currentStatus == ModuleStatus.loading ||
+        _currentStatus == ModuleStatus.loaded) {
       return;
     }
 
@@ -70,61 +69,62 @@ class ModuleController {
       // 1. Resolve Imports via GraphResolver
       final resolver = GraphResolver();
       final imports = await resolver.resolveAndInitImports(
-        module, 
-        globalModuleRegistry, 
+        module,
+        globalModuleRegistry,
         _binderFactory,
         resolutionStack: resolutionStack,
         interceptors: interceptors,
       );
-      
+
       importedControllers.addAll(imports);
       final importBinders = imports.map((c) => c.binder).toList();
 
       // 2. Configure Binder with imports
       binder.addImports(importBinders);
-      
+
       // 3. Validate Expects (Fail-Fast)
       for (final expectedType in module.expects) {
         // contains проверяет всю цепочку (Local + Imports + Parent)
         // Но на этом этапе Local пуст (binds еще не вызван).
         // Значит, мы проверяем Imports и Parent.
         if (!binder.contains(expectedType)) {
-           throw Exception(
-             "Module ${module.runtimeType} expects dependency of type '$expectedType', "
-             "but it was not found in Parent Scope or Imports.\n"
-             "Check if the parent module exports it or if it's correctly imported."
-           );
+          throw Exception(
+              "Module ${module.runtimeType} expects dependency of type '$expectedType', "
+              "but it was not found in Parent Scope or Imports.\n"
+              "Check if the parent module exports it or if it's correctly imported.");
         }
       }
 
       // 4. Binds (Private & Public)
-      if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
+      if (binder is ExportableBinder)
+        (binder as ExportableBinder).disableExportMode();
       module.binds(binder);
-      
+
       // Apply Overrides (Test)
       if (overrides != null) {
         overrides!(binder);
       }
 
-      if (binder is ExportableBinder) (binder as ExportableBinder).enableExportMode();
+      if (binder is ExportableBinder)
+        (binder as ExportableBinder).enableExportMode();
       module.exports(binder);
-      if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
+      if (binder is ExportableBinder)
+        (binder as ExportableBinder).disableExportMode();
 
       // 5. Async Init
       await module.onInit();
 
       _updateStatus(ModuleStatus.loaded);
-      
+
       // Interceptor: onLoaded
       for (var i in interceptors) i.onLoaded(module);
-
     } catch (e) {
       _lastError = e;
       _updateStatus(ModuleStatus.error);
-      
+
       // Interceptor: onError
       for (var i in interceptors) i.onError(module, e);
-      
+
       rethrow;
     }
   }
@@ -132,18 +132,20 @@ class ModuleController {
   /// Hot Reload logic.
   void hotReload() {
     if (_currentStatus != ModuleStatus.loaded) return;
-    
+
     // Перезапускаем binds, чтобы обновить фабрики.
     // Синглтоны в SimpleBinder сохранятся, если мы просто перезапишем поверх?
     // Нет, SimpleBinder перезапишет регистрацию и потеряет инстанс.
     // Для MVP мы просто вызываем хук и перезаписываем.
     // В будущем SimpleBinder должен поддерживать "updateFactoryOnly".
-    
-    if (binder is ExportableBinder) (binder as ExportableBinder).disableExportMode();
+
+    if (binder is ExportableBinder)
+      (binder as ExportableBinder).disableExportMode();
     module.binds(binder);
-    if (binder is ExportableBinder) (binder as ExportableBinder).enableExportMode();
+    if (binder is ExportableBinder)
+      (binder as ExportableBinder).enableExportMode();
     module.exports(binder);
-    
+
     // Хук пользователя
     module.hotReload(binder);
   }
@@ -152,13 +154,13 @@ class ModuleController {
     _updateStatus(ModuleStatus.disposed);
     module.onDispose();
     if (binder is SimpleBinder) {
-       (binder as SimpleBinder).dispose();
+      (binder as SimpleBinder).dispose();
     } else if (binder is ExportableBinder) {
-       // Try dispose if available, currently only SimpleBinder has explicit dispose method
-       // We might need DisposableBinder interface too.
+      // Try dispose if available, currently only SimpleBinder has explicit dispose method
+      // We might need DisposableBinder interface too.
     }
     await _statusController.close();
-    
+
     // Interceptor: onDispose
     for (var i in interceptors) i.onDispose(module);
   }

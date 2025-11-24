@@ -34,10 +34,11 @@ class _SettingsPageState extends State<SettingsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Observer(
-              builder: (_) => Text('User: ${authStore.user?.username ?? "Guest"}'),
+              builder: (_) =>
+                  Text('User: ${authStore.user?.username ?? "Guest"}'),
             ),
             const SizedBox(height: 20),
-            
+
             // Strict Disposal Test Toggle
             SwitchListTile(
               key: const Key('debug_toggle'),
@@ -45,7 +46,7 @@ class _SettingsPageState extends State<SettingsPage> {
               value: _showDebug,
               onChanged: (v) => setState(() => _showDebug = v),
             ),
-            
+
             if (_showDebug)
               ModuleScope(
                 module: DebugModule(),

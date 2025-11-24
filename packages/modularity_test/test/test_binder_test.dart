@@ -25,7 +25,7 @@ void main() {
       expect(testBinder.hasFactory<int>(), isTrue);
       expect(testBinder.hasEagerSingleton<bool>(), isTrue);
       expect(testBinder.hasInstance<double>(), isTrue);
-      
+
       expect(testBinder.registeredSingletons, contains(String));
       expect(testBinder.registeredFactories, contains(int));
     });
@@ -38,14 +38,14 @@ void main() {
       expect(realBinder.get<String>(), equals('value'));
       expect(testBinder.get<String>(), equals('value'));
     });
-    
+
     test('should record resolutions', () {
       final realBinder = SimpleBinderFactory().create();
       final testBinder = TestBinder(realBinder);
-      
+
       testBinder.instance<String>('value');
       testBinder.get<String>();
-      
+
       expect(testBinder.wasResolved<String>(), isTrue);
       expect(testBinder.resolvedTypes, contains(String));
     });
@@ -56,13 +56,12 @@ void main() {
       await testModule(TestModule(), (module, binder) {
         expect(binder.hasSingleton<String>(), isTrue);
         expect(binder.hasFactory<int>(), isTrue);
-        
+
         expect(binder.get<String>(), equals('singleton'));
         expect(binder.get<int>(), equals(42));
-        
+
         expect(binder.wasResolved<String>(), isTrue);
       });
     });
   });
 }
-

@@ -19,10 +19,10 @@ class MyApp extends StatelessWidget {
           builder: (context) {
             // Retrieve AuthService from RootModule
             final authService = ModuleProvider.of(context).get<AuthService>();
-            
+
             // Initialize AppRouter with AuthService
             // Using a singleton-like behavior for Router in this scope is fine for example
-            // Ideally, store this in a StatefulWidget if rebuilds are frequent, 
+            // Ideally, store this in a StatefulWidget if rebuilds are frequent,
             // but ModuleScope is stable here.
             final appRouter = AppRouter(authService);
 
@@ -38,5 +38,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-

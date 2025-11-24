@@ -4,10 +4,10 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 class GetItBinder implements ExportableBinder {
   /// Используем отдельный инстанс GetIt для каждого модуля для изоляции.
   final GetIt _getIt = GetIt.asNewInstance();
-  
+
   final Binder? _parent;
   final List<Binder> _imports = [];
-  
+
   final Set<Type> _exportedTypes = {};
   bool _isExportMode = false;
 
@@ -15,7 +15,7 @@ class GetItBinder implements ExportableBinder {
 
   @override
   void enableExportMode() => _isExportMode = true;
-  
+
   @override
   void disableExportMode() => _isExportMode = false;
 
@@ -28,15 +28,15 @@ class GetItBinder implements ExportableBinder {
   bool contains(Type type) {
     // 1. Local
     if (_getIt.isRegistered(type: type)) return true;
-    
+
     // 2. Imports
     for (final imported in _imports) {
       if (imported.contains(type)) return true;
     }
-    
+
     // 3. Parent
     if (_parent?.contains(type) ?? false) return true;
-    
+
     return false;
   }
 
@@ -120,13 +120,13 @@ class GetItBinder implements ExportableBinder {
   T? tryParent<T extends Object>() {
     return _parent?.tryGet<T>();
   }
-  
+
   void _trackExport<T>() {
     if (_isExportMode) {
       _exportedTypes.add(T);
     }
   }
-  
+
   Future<void> reset() async {
     await _getIt.reset();
   }

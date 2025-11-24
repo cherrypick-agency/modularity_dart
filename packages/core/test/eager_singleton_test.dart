@@ -20,7 +20,7 @@ void main() {
     test('lazy singleton is NOT created until get()', () {
       binder.singleton<Service>(() => Service());
       expect(Service.instanceCount, 0);
-      
+
       binder.get<Service>();
       expect(Service.instanceCount, 1);
     });
@@ -28,19 +28,18 @@ void main() {
     test('eager singleton IS created immediately', () {
       binder.eagerSingleton<Service>(() => Service());
       expect(Service.instanceCount, 1);
-      
+
       binder.get<Service>();
       expect(Service.instanceCount, 1);
     });
-    
+
     test('eager singleton persists across get calls', () {
       binder.eagerSingleton<Service>(() => Service());
       final s1 = binder.get<Service>();
       final s2 = binder.get<Service>();
-      
+
       expect(s1, equals(s2));
       expect(Service.instanceCount, 1);
     });
   });
 }
-

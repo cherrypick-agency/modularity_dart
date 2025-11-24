@@ -12,14 +12,15 @@ void main() {
   group('Complex MobX Widget Tests', () {
     // Simplified test: We just verify that IF the store has an error, the UI shows it.
     // We set the error BEFORE pumping the widget. This avoids race conditions with reactive updates in test environment.
-    testWidgets('LoginPage displays error message on invalid credentials', (tester) async {
+    testWidgets('LoginPage displays error message on invalid credentials',
+        (tester) async {
       final authStore = AuthStore();
-      
+
       // Pre-set state
       runInAction(() {
         authStore.errorMessage = 'Manual Error';
       });
-      
+
       await tester.pumpWidget(
         ModularityRoot(
           child: MaterialApp(
@@ -35,21 +36,21 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      
+
       expect(find.text('Manual Error'), findsOneWidget);
       expect(find.text('Login Page'), findsOneWidget);
     });
 
     testWidgets('CartPage shows items and handles removal', (tester) async {
       final cartStore = CartStore();
-      
+
       await tester.pumpWidget(
         ModularityRoot(
           child: MaterialApp(
             home: ModuleScope(
               module: CartModule(),
               overrides: (binder) {
-                 binder.singleton<CartStore>(() => cartStore);
+                binder.singleton<CartStore>(() => cartStore);
               },
               child: const CartPage(),
             ),
@@ -65,7 +66,7 @@ void main() {
       runInAction(() {
         cartStore.add(const Product(1, 'Test Item', 10.0));
       });
-      
+
       await tester.pumpAndSettle();
 
       // Verify List

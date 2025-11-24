@@ -26,4 +26,3 @@ abstract class _ProductStore with Store {
     isLoading = false;
   }
 }
-

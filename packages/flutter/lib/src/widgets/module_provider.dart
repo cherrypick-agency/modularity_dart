@@ -20,7 +20,7 @@ class ModuleProvider extends InheritedWidget {
   /// `ModuleProvider.of(context).get<Service>()`
   /// `ModuleProvider.of(context).parent<Service>()`
   static Binder of(BuildContext context, {bool listen = true}) {
-    final provider = listen 
+    final provider = listen
         ? context.dependOnInheritedWidgetOfExactType<ModuleProvider>()
         : context.getInheritedWidgetOfExactType<ModuleProvider>();
 
@@ -29,9 +29,10 @@ class ModuleProvider extends InheritedWidget {
     }
     return provider.controller.binder;
   }
-  
+
   /// Получает сам модуль типа [M] из контекста.
-  static M moduleOf<M extends Module>(BuildContext context, {bool listen = true}) {
+  static M moduleOf<M extends Module>(BuildContext context,
+      {bool listen = true}) {
     final provider = listen
         ? context.dependOnInheritedWidgetOfExactType<ModuleProvider>()
         : context.getInheritedWidgetOfExactType<ModuleProvider>();
@@ -39,11 +40,12 @@ class ModuleProvider extends InheritedWidget {
     if (provider == null) {
       throw Exception('ModuleProvider not found in context');
     }
-    
+
     if (provider.controller.module is! M) {
-       throw Exception('Nearest module is ${provider.controller.module.runtimeType}, but expected $M');
+      throw Exception(
+          'Nearest module is ${provider.controller.module.runtimeType}, but expected $M');
     }
-    
+
     return provider.controller.module as M;
   }
 }

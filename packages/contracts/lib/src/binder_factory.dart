@@ -5,4 +5,3 @@ import 'binder.dart';
 abstract class BinderFactory {
   Binder create([Binder? parent]);
 }
-

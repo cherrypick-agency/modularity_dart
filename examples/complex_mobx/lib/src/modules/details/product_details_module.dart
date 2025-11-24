@@ -6,7 +6,7 @@ import '../../stores/cart_store.dart';
 
 class ProductDetailsModule extends Module implements Configurable<Product> {
   late Product _product;
-  
+
   // Test Tracker
   static bool wasDisposed = false;
   static bool wasInit = false;
@@ -48,7 +48,7 @@ class ProductDetailsPage extends StatelessWidget {
     final binder = ModuleProvider.of(context);
     final cartStore = binder.get<CartStore>();
     final title = binder.get<String>();
-    
+
     return Scaffold(
       appBar: AppBar(title: const Text('Details')),
       body: Center(
@@ -60,10 +60,12 @@ class ProductDetailsPage extends StatelessWidget {
             Observer(
               builder: (_) {
                 // Check if item is in cart using the parent store
-                final isInCart = cartStore.items.any((i) => title.contains(i.name));
-                return isInCart 
-                  ? const Text("Already in Cart", style: TextStyle(color: Colors.green))
-                  : const Text("Not in Cart");
+                final isInCart =
+                    cartStore.items.any((i) => title.contains(i.name));
+                return isInCart
+                    ? const Text("Already in Cart",
+                        style: TextStyle(color: Colors.green))
+                    : const Text("Not in Cart");
               },
             )
           ],

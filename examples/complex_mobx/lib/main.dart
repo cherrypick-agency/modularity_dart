@@ -31,4 +31,3 @@ class ComplexApp extends StatelessWidget {
     );
   }
 }
-

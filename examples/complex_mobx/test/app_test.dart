@@ -12,14 +12,14 @@ void main() {
 
     // 1. Verify Login Page
     expect(find.text('Login Page'), findsOneWidget);
-    
+
     // 2. Perform Login
-    // Need to tap login button. 
+    // Need to tap login button.
     // Note: The AuthStore login has a 500ms delay.
     await tester.tap(find.byKey(const Key('login_btn')));
-    
+
     // Pump to trigger loading state
-    await tester.pump(); 
+    await tester.pump();
     // expect(find.byType(CircularProgressIndicator), findsOneWidget); // Might miss frame
 
     // Settle after async login

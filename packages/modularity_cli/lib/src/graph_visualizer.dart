@@ -16,7 +16,8 @@ class GraphVisualizer {
     final buffer = StringBuffer();
     buffer.writeln('digraph Modules {');
     // Global settings
-    buffer.writeln('  node [shape=box, style="filled,rounded", fillcolor="#e3f2fd", fontname="Arial", penwidth=1.5, color="#90caf9"];');
+    buffer.writeln(
+        '  node [shape=box, style="filled,rounded", fillcolor="#e3f2fd", fontname="Arial", penwidth=1.5, color="#90caf9"];');
     buffer.writeln('  edge [fontname="Arial", fontsize=10];');
     buffer.writeln('  rankdir=TB;'); // Top to Bottom layout
 
@@ -32,13 +33,15 @@ class GraphVisualizer {
 
       // Highlight root node
       if (current == rootModule) {
-        buffer.writeln('  "$currentType" [fillcolor="#bbdefb", color="#1565c0", penwidth=2.5];');
+        buffer.writeln(
+            '  "$currentType" [fillcolor="#bbdefb", color="#1565c0", penwidth=2.5];');
       }
 
       // 1. Imports (Dependencies) - Dashed arrows
       for (final imported in current.imports) {
         final importedType = imported.runtimeType;
-        buffer.writeln('  "$currentType" -> "$importedType" [style=dashed, color="#616161", label="imports"];');
+        buffer.writeln(
+            '  "$currentType" -> "$importedType" [style=dashed, color="#616161", label="imports"];');
         queue.add(imported);
       }
 
@@ -48,7 +51,8 @@ class GraphVisualizer {
           final submoduleType = submodule.runtimeType;
           // dir=back because diamond is at the tail (parent)
           // arrowtail=diamond represents "Composition"
-          buffer.writeln('  "$currentType" -> "$submoduleType" [dir=back, arrowtail=diamond, color="#1565c0", penwidth=1.5, label="owns"];');
+          buffer.writeln(
+              '  "$currentType" -> "$submoduleType" [dir=back, arrowtail=diamond, color="#1565c0", penwidth=1.5, label="owns"];');
           queue.add(submodule);
         }
       } catch (e) {

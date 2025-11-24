@@ -15,4 +15,3 @@ abstract class ModuleInterceptor {
   /// Called when module is disposed.
   void onDispose(Module module);
 }
-

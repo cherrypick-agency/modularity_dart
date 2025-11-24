@@ -21,9 +21,10 @@ class TestModule extends Module {
 }
 
 void main() {
-  testWidgets('ModuleScope Retention Policy: Dispose only on Pop', (tester) async {
+  testWidgets('ModuleScope Retention Policy: Dispose only on Pop',
+      (tester) async {
     final module = TestModule();
-    
+
     await tester.pumpWidget(
       ModularityRoot(
         child: MaterialApp(
@@ -62,7 +63,7 @@ void main() {
     // 2. Push Module Screen
     await tester.tap(find.text('Push Module'));
     await tester.pumpAndSettle();
-    
+
     expect(find.text('Module Screen Body'), findsOneWidget);
     expect(module.isInitialized, true);
     expect(module.isDisposed, false);
@@ -70,7 +71,7 @@ void main() {
     // 3. Push Another Screen (Covering Module)
     await tester.tap(find.text('Push Next'));
     await tester.pumpAndSettle();
-    
+
     expect(find.text('Third Screen Body'), findsOneWidget);
     // Module Screen is hidden but should NOT be disposed
     expect(module.isDisposed, false);
@@ -78,14 +79,14 @@ void main() {
     // 4. Pop Third Screen
     await tester.tap(find.text('Back')); // Standard back button or logic
     await tester.pumpAndSettle();
-    
+
     expect(find.text('Module Screen Body'), findsOneWidget);
     expect(module.isDisposed, false);
 
     // 5. Pop Module Screen
     await tester.tap(find.text('Back to Home'));
     await tester.pumpAndSettle();
-    
+
     expect(find.text('Home'), findsOneWidget);
     // Now it should be disposed
     expect(module.isDisposed, true);
@@ -112,8 +113,8 @@ class SecondPage extends StatelessWidget {
             child: const Text('Push Next'),
           ),
           ElevatedButton(
-             onPressed: () => Navigator.pop(context),
-             child: const Text('Back to Home'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Back to Home'),
           )
         ],
       ),
@@ -140,4 +141,3 @@ class ThirdPage extends StatelessWidget {
     );
   }
 }
-

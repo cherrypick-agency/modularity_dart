@@ -45,7 +45,8 @@ class _CounterView extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text('Riverpod: ${auth.token}')),
       body: Center(
-        child: Text('Count: $count', style: Theme.of(context).textTheme.headlineMedium),
+        child: Text('Count: $count',
+            style: Theme.of(context).textTheme.headlineMedium),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => ref.read(counterProvider.notifier).state++,
