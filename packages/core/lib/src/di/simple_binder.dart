@@ -29,6 +29,10 @@ class SimpleBinder implements ExportableBinder {
   /// Если true, регистрация идет в _publicRegistrations.
   bool _isExportMode = false;
 
+  /// После завершения exports публичный скоуп может быть «заморожен» для защиты
+  /// от пост-регистраций. Hot reload может сбросить этот флаг.
+  bool _publicSealed = false;
+
   SimpleBinder({
     List<Binder> imports = const [],
     Binder? parent,
@@ -47,6 +51,22 @@ class SimpleBinder implements ExportableBinder {
   /// Выключает режим экспорта (регистрация в приватный скоуп).
   @override
   void disableExportMode() => _isExportMode = false;
+
+  @override
+  bool get isExportModeEnabled => _isExportMode;
+
+  @override
+  bool get isPublicScopeSealed => _publicSealed;
+
+  @override
+  void sealPublicScope() {
+    _publicSealed = true;
+  }
+
+  @override
+  void resetPublicScope() {
+    _publicSealed = false;
+  }
 
   @override
   void registerLazySingleton<T extends Object>(T Function() factory) {
@@ -83,10 +103,20 @@ class SimpleBinder implements ExportableBinder {
 
   void _register<T extends Object>(_Registration reg) {
     if (_isExportMode) {
+      if (_publicSealed) {
+        throw StateError(
+          'Public scope is sealed. Call resetPublicScope() before registering new exports.',
+        );
+      }
+      if (_publicRegistrations.containsKey(T)) {
+        throw StateError(
+          'Type $T is already exported in this module. Duplicate exports are not allowed.',
+        );
+      }
       _publicRegistrations[T] = reg;
-    } else {
-      _privateRegistrations[T] = reg;
+      return;
     }
+    _privateRegistrations[T] = reg;
   }
 
   @override
@@ -207,5 +237,39 @@ class SimpleBinder implements ExportableBinder {
   void dispose() {
     _privateRegistrations.clear();
     _publicRegistrations.clear();
+    _publicSealed = false;
+  }
+
+  /// Простая текстовая диагностика текущего состояния биндеров.
+  String debugGraph({bool includeImports = false}) {
+    final buffer = StringBuffer()
+      ..writeln('SimpleBinder(${hashCode.toRadixString(16)})')
+      ..writeln('  Private:')
+      ..writeln(_privateRegistrations.keys
+          .map((t) => '    - ${t.toString()}')
+          .join('\n')
+          .trimRight())
+      ..writeln('  Public:')
+      ..writeln(_publicRegistrations.keys
+          .map((t) => '    - ${t.toString()}')
+          .join('\n')
+          .trimRight());
+
+    if (includeImports && _imports.isNotEmpty) {
+      buffer.writeln('  Imports:');
+      for (final imported in _imports) {
+        if (imported is SimpleBinder) {
+          buffer.writeln(imported
+              .debugGraph(includeImports: false)
+              .split('\n')
+              .map((line) => '    $line')
+              .join('\n'));
+        } else {
+          buffer.writeln('    - ${imported.runtimeType}');
+        }
+      }
+    }
+
+    return buffer.toString();
   }
 }

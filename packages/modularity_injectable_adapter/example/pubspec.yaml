@@ -1,0 +1,20 @@
+name: modularity_injectable_adapter_example
+description: Example demonstrating how to wire injectable into Modularity.
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  modularity_contracts: ^0.0.1
+  modularity_core: ^0.0.1
+  modularity_injectable_adapter:
+    path: ..
+  get_it: ^7.6.4
+  injectable: ^2.3.2
+
+dev_dependencies:
+  lints: ^3.0.0
+  build_runner: ^2.4.14
+

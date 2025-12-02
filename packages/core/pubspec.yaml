@@ -1,7 +1,7 @@
 name: modularity_core
 description: Core logic for Modularity framework (Graph, Lifecycle, DI).
 version: 0.0.1
-repository: https://github.com/cherrypick-agency/flutter_modularity/tree/main/packages/core
+repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/core
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

@@ -56,4 +56,19 @@ abstract class ExportableBinder implements Binder {
 
   /// Проверяет наличие публичной зависимости.
   bool containsPublic(Type type);
+
+  /// Помечает публичный скоуп как «замороженный» после завершения exports.
+  /// После вызова новые регистрации в export-режиме запрещены, пока
+  /// [resetPublicScope] явно не откроет его повторно (например, для hot reload).
+  void sealPublicScope();
+
+  /// Сбрасывает флаг заморозки публичного скоупа. Нужен для hot reload,
+  /// когда нужно обновить фабрики, не создавая новый Binder.
+  void resetPublicScope();
+
+  /// Флаг, показывающий активен ли режим экспорта.
+  bool get isExportModeEnabled;
+
+  /// Флаг, показывающий, что публичный скоуп был заморожен.
+  bool get isPublicScopeSealed;
 }

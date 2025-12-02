@@ -1,7 +1,7 @@
 name: modularity_get_it
 description: GetIt adapter for Modularity.
 version: 0.0.1
-repository: https://github.com/cherrypick-agency/flutter_modularity/tree/main/packages/adapters/modularity_get_it
+repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/adapters/modularity_get_it
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

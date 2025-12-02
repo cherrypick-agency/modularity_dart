@@ -1,5 +1,5 @@
 name: modularity
-repository: https://github.com/your_org/modularity
+repository: https://github.com/cherrypick-agency/modularity_dart
 
 packages:
   - packages/**

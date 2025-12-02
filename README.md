@@ -6,13 +6,18 @@
 
 A modular architecture framework for Flutter applications based on Clean Architecture & SOLID principles. Designed for enterprise-scale apps requiring strict isolation, testability, and a predictable lifecycle.
 
+Repository: [github.com/cherrypick-agency/modularity_dart](https://github.com/cherrypick-agency/modularity_dart)
+
 ## 📦 Packages
 
-- **[contracts](packages/contracts)**: Zero-dependency interfaces.
-- **[core](packages/core)**: DI container and state machine logic.
-- **[flutter](packages/flutter)**: Flutter widgets and `RouteObserver` integration.
-- **[modularity_test](packages/modularity_test)**: Unit testing utilities (`testModule`).
-- **[modularity_cli](packages/modularity_cli)**: Graph visualization tools.
+| Package | Version | Pub Points | Description |
+| ------- | ------- | ---------- | ----------- |
+| [modularity_contracts](https://pub.dev/packages/modularity_contracts) | [![pub](https://img.shields.io/pub/v/modularity_contracts.svg)](https://pub.dev/packages/modularity_contracts) | [![pub points](https://img.shields.io/pub/points/modularity_contracts)](https://pub.dev/packages/modularity_contracts/score) | Zero-dependency interfaces |
+| [modularity_core](https://pub.dev/packages/modularity_core) | [![pub](https://img.shields.io/pub/v/modularity_core.svg)](https://pub.dev/packages/modularity_core) | [![pub points](https://img.shields.io/pub/points/modularity_core)](https://pub.dev/packages/modularity_core/score) | DI container and state machine logic |
+| [modularity_flutter](https://pub.dev/packages/modularity_flutter) | [![pub](https://img.shields.io/pub/v/modularity_flutter.svg)](https://pub.dev/packages/modularity_flutter) | [![pub points](https://img.shields.io/pub/points/modularity_flutter)](https://pub.dev/packages/modularity_flutter/score) | Flutter widgets and RouteObserver integration |
+| [modularity_test](https://pub.dev/packages/modularity_test) | [![pub](https://img.shields.io/pub/v/modularity_test.svg)](https://pub.dev/packages/modularity_test) | [![pub points](https://img.shields.io/pub/points/modularity_test)](https://pub.dev/packages/modularity_test/score) | Unit testing utilities (testModule) |
+| [modularity_cli](https://pub.dev/packages/modularity_cli) | [![pub](https://img.shields.io/pub/v/modularity_cli.svg)](https://pub.dev/packages/modularity_cli) | [![pub points](https://img.shields.io/pub/points/modularity_cli)](https://pub.dev/packages/modularity_cli/score) | Graph visualization tools |
+| [modularity_get_it](https://pub.dev/packages/modularity_get_it) | [![pub](https://img.shields.io/pub/v/modularity_get_it.svg)](https://pub.dev/packages/modularity_get_it) | [![pub points](https://img.shields.io/pub/points/modularity_get_it)](https://pub.dev/packages/modularity_get_it/score) | GetIt adapter for Modularity |
 
 ## 🚀 Key Features
 
@@ -111,3 +116,40 @@ void main() {
   });
 }
 ```
+
+## 🔍 Diagnostics
+
+Need to inspect which dependencies a real module contributes? After the controllers finish initialization you can dump the binder to see both private and exported tokens (plus imported scopes):
+
+```dart
+final registry = <Type, ModuleController>{};
+
+final authController = ModuleController(AuthModule());
+await authController.initialize(registry);
+
+final dashboardController = ModuleController(DashboardModule());
+await dashboardController.initialize(registry);
+
+debugPrint(
+  (dashboardController.binder as SimpleBinder).debugGraph(includeImports: true),
+);
+```
+
+This prints something like:
+
+```
+SimpleBinder(4c1f)
+  Private:
+    - DashboardController
+    - DashboardViewModel
+  Public:
+    - DashboardService
+  Imports:
+    SimpleBinder(13ab)
+      Private:
+        - AuthRepositoryImpl
+      Public:
+        - AuthService
+```
+
+Handy when you need to confirm that `AuthService` is exported while `AuthRepositoryImpl` stays private.

@@ -1,7 +1,7 @@
 name: modularity_cli
 description: CLI tools for Modularity framework visualization.
 version: 0.0.1
-repository: https://github.com/cherrypick-agency/flutter_modularity/tree/main/packages/modularity_cli
+repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/modularity_cli
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
