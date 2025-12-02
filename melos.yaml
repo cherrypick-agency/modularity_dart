@@ -39,6 +39,12 @@ scripts:
       scope: modularity_test
     description: Run tests for Modularity Test Infrastructure.
 
+  test:injectable:
+    exec: dart test
+    packageFilters:
+      scope: modularity_injectable_adapter
+    description: Run tests for Injectable Adapter package.
+
   test:examples:
     exec: flutter test
     packageFilters:
@@ -48,7 +54,7 @@ scripts:
     description: Run tests for all examples.
 
   test:all:
-    run: melos run test:core && melos run test:flutter && melos run test:cli && melos run test:infra && melos run test:examples
+    run: melos run test:core && melos run test:flutter && melos run test:cli && melos run test:infra && melos run test:injectable && melos run test:examples
     description: Run all tests across the entire workspace.
 
   test:coverage:

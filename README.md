@@ -18,6 +18,7 @@ Repository: [github.com/cherrypick-agency/modularity_dart](https://github.com/ch
 | [modularity_test](https://pub.dev/packages/modularity_test) | [![pub](https://img.shields.io/pub/v/modularity_test.svg)](https://pub.dev/packages/modularity_test) | [![pub points](https://img.shields.io/pub/points/modularity_test)](https://pub.dev/packages/modularity_test/score) | Unit testing utilities (testModule) |
 | [modularity_cli](https://pub.dev/packages/modularity_cli) | [![pub](https://img.shields.io/pub/v/modularity_cli.svg)](https://pub.dev/packages/modularity_cli) | [![pub points](https://img.shields.io/pub/points/modularity_cli)](https://pub.dev/packages/modularity_cli/score) | Graph visualization tools |
 | [modularity_get_it](https://pub.dev/packages/modularity_get_it) | [![pub](https://img.shields.io/pub/v/modularity_get_it.svg)](https://pub.dev/packages/modularity_get_it) | [![pub points](https://img.shields.io/pub/points/modularity_get_it)](https://pub.dev/packages/modularity_get_it/score) | GetIt adapter for Modularity |
+| [modularity_injectable_adapter](https://pub.dev/packages/modularity_injectable_adapter) | [![pub](https://img.shields.io/pub/v/modularity_injectable_adapter.svg)](https://pub.dev/packages/modularity_injectable_adapter) | [![pub points](https://img.shields.io/pub/points/modularity_injectable_adapter)](https://pub.dev/packages/modularity_injectable_adapter/score) | Optional injectable + GetIt integration |
 
 ## 🚀 Key Features
 
@@ -70,6 +71,8 @@ class AppModule extends Module {
   }
 }
 ```
+
+> **Prefer code generation?** If you'd rather use `injectable` for auto-wiring, see [modularity_injectable_adapter](packages/modularity_injectable_adapter/README.md). It's entirely optional — manual registration works great for most projects.
 
 ### 2. Initialize Root
 

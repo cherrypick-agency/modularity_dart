@@ -1,14 +1,21 @@
 name: modularity_injectable_adapter
-description: Injectable + GetIt integration utilities for the Modularity framework.
+description: Injectable + GetIt integration utilities for the Modularity framework. Enables auto-wiring while preserving strict module boundaries.
 version: 0.0.1
 repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/modularity_injectable_adapter
+homepage: https://github.com/cherrypick-agency/modularity_dart
+issue_tracker: https://github.com/cherrypick-agency/modularity_dart/issues
+topics:
+  - dependency-injection
+  - modular
+  - get-it
+  - injectable
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  get_it: ^7.6.4
-  injectable: ^2.3.2
+  get_it: '>=7.6.0 <10.0.0'
+  injectable: '>=2.3.0 <3.0.0'
   modularity_contracts: ^0.0.1
   modularity_core: ^0.0.1
 

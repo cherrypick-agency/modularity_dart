@@ -1,43 +1,31 @@
 # modularity_injectable_adapter
 
-Utilities that connect **injectable** + **GetIt** generated wiring with the Modularity framework. Migrating an existing module requires three steps:
+[![pub package](https://img.shields.io/pub/v/modularity_injectable_adapter.svg)](https://pub.dev/packages/modularity_injectable_adapter)
 
-1. **Switch BinderFactory** – tell `ModularityRoot` to use `GetItBinderFactory`.
-2. **Annotate exports** – mark public dependencies with `@moduleExportEnv` (env name `modularity_export`).
-3. **Call the bridge** – invoke `ModularityInjectableBridge.configureInternal/Exports` inside your module.
+Optional integration package that connects **injectable** + **GetIt** code generation with the Modularity framework.
 
-```dart
-import 'package:modularity_injectable_adapter/modularity_injectable_adapter.dart';
+> **Note:** This package is entirely optional. The core Modularity framework works perfectly with manual `binds`/`exports` registration. Use this adapter only if you prefer auto-wiring via `injectable`.
 
-@InjectableInit(
-  initializerName: 'configureInternal',
-  asExtension: false,
-)
-void configureInternal(GetIt getIt) => configureInternal(getIt);
+## Features
 
-@InjectableInit(
-  initializerName: 'configureExports',
-  asExtension: false,
-)
-void configureExports(GetIt getIt) => configureExports(
-      getIt,
-      environmentFilter: const ModularityExportOnly(),
-    );
+- `GetItBinder` — a `Binder` implementation backed by scoped GetIt instances
+- `ModularityInjectableBridge` — helper to invoke injectable-generated functions inside `binds`/`exports`
+- `modularityExportEnv` — environment constant to mark dependencies for export
 
-class AuthModule extends Module {
-  @override
-  void binds(Binder i) {
-    ModularityInjectableBridge.configureInternal(i, configureInternal);
-  }
+## Installation
 
-  @override
-  void exports(Binder i) {
-    ModularityInjectableBridge.configureExports(i, configureExports);
-  }
-}
+```yaml
+dependencies:
+  modularity_injectable_adapter: ^0.0.1
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  injectable_generator: ^2.4.0
 ```
 
-In your app root:
+## Quick Start
+
+### 1. Configure your app root
 
 ```dart
 ModularityRoot(
@@ -46,5 +34,71 @@ ModularityRoot(
 );
 ```
 
-Only dependencies annotated with `@LazySingleton(env: [modularityExportEnv.name])` are exported. Everything else remains private to the module. This keeps Modularity’s explicit boundaries while letting `injectable` generate the wiring for you.*** End Patch
+### 2. Create injectable configuration
+
+```dart
+// lib/di/auth_injectable.dart
+import 'package:get_it/get_it.dart';
+import 'package:injectable/injectable.dart';
+
+@InjectableInit(initializerName: 'configureAuthInternal', asExtension: false)
+void configureAuthInternal(GetIt getIt) => $initGetIt(getIt);
+
+@InjectableInit(initializerName: 'configureAuthExports', asExtension: false)
+void configureAuthExports(GetIt getIt, {EnvironmentFilter? environmentFilter}) =>
+    $initGetIt(getIt, environmentFilter: environmentFilter);
+```
+
+### 3. Annotate your dependencies
+
+```dart
+@LazySingleton()
+class AuthRepositoryImpl implements AuthRepository { ... }
+
+// Mark for export with modularityExportEnv
+@LazySingleton(env: [modularityExportEnvName])
+class AuthService { ... }
+```
+
+### 4. Wire up your module
+
+```dart
+class AuthModule extends Module {
+  @override
+  void binds(Binder i) {
+    ModularityInjectableBridge.configureInternal(i, configureAuthInternal);
+  }
+
+  @override
+  void exports(Binder i) {
+    ModularityInjectableBridge.configureExports(i, configureAuthExports);
+  }
+}
+```
+
+## How It Works
+
+- `configureInternal` registers **all** dependencies into the private scope
+- `configureExports` registers **only** dependencies annotated with `@modularityExportEnv` into the public scope
+- This preserves Modularity's strict module boundaries while letting `injectable` generate the wiring
+
+## Manual Alternative
+
+If you prefer explicit registration without code generation, simply use the standard approach:
+
+```dart
+class AuthModule extends Module {
+  @override
+  void binds(Binder i) {
+    i.singleton<AuthRepository>(() => AuthRepositoryImpl());
+  }
+
+  @override
+  void exports(Binder i) {
+    i.singleton<AuthService>(() => AuthService(i.get()));
+  }
+}
+```
+
+See the [main Modularity documentation](https://github.com/cherrypick-agency/modularity_dart) for more details.
 
