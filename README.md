@@ -2,7 +2,8 @@
 
 ![coverage](https://img.shields.io/badge/coverage-61.4%25-yellow)
 
-![screenshot](image.png)
+<img alt="image" src="https://github.com/user-attachments/assets/a5965bcc-681c-48ea-933d-a242d05b7163" />
+
 
 A modular architecture framework for Flutter applications based on Clean Architecture & SOLID principles. Designed for enterprise-scale apps requiring strict isolation, testability, and a predictable lifecycle.
 
