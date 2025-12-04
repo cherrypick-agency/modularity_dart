@@ -8,6 +8,43 @@ A modular architecture framework for Flutter applications based on Clean Archite
 
 Repository: [github.com/cherrypick-agency/modularity_dart](https://github.com/cherrypick-agency/modularity_dart)
 
+---
+
+## 📑 Table of Contents
+
+- [📦 Packages](#-packages)
+- [🚀 Key Features](#-key-features)
+- [⚖️ Comparison](#️-comparison)
+- [🛠 Getting Started](#-getting-started)
+  - [1. Define a Module](#1-define-a-module)
+  - [2. Initialize Root](#2-initialize-root)
+  - [3. Use in UI](#3-use-in-ui)
+- [🧩 Advanced Features](#-advanced-features)
+  - [Lifecycle Hooks (onInit / onDispose)](#lifecycle-hooks-oninit--ondispose)
+  - [Configurable Modules](#configurable-modules)
+  - [Expected Dependencies (expects)](#expected-dependencies-expects)
+  - [Module Interceptors](#module-interceptors)
+  - [Scoped Overrides (ModuleOverrideScope)](#scoped-overrides-moduleoverridescope)
+  - [Submodules (Static Analysis)](#submodules-static-analysis)
+  - [Hot Reload Support](#hot-reload-support)
+  - [Custom Retention Identity](#custom-retention-identity)
+  - [ModularityRoot Configuration](#modularityroot-configuration)
+- [🔌 Router Integration](#-router-integration)
+  - [GoRouter](#gorouter)
+  - [AutoRoute](#autoroute)
+- [📊 CLI Visualization](#-cli-visualization)
+- [🔧 DI Container Adapters](#-di-container-adapters)
+  - [GetIt Integration](#getit-integration)
+  - [Injectable Integration](#injectable-integration)
+- [🧪 Testing](#-testing)
+- [🔍 Diagnostics](#-diagnostics)
+  - [Binder Graph](#binder-graph)
+  - [Lifecycle Logging](#lifecycle-logging)
+- [📖 Binder API Reference](#-binder-api-reference)
+- [⚠️ Retention Key vs Override Scope](#️-retention-key-vs-override-scope)
+
+---
+
 ## 📦 Packages
 
 | Package | Version | Pub Points | Description |
@@ -53,21 +90,15 @@ class AppModule extends Module {
   List<Module> get imports => [ /* SharedModule() */ ];
 
   @override
-  void binds(Binder i) {
+  void binds(Binder binder) {
     // Private: Implementation details
-    i.singleton<AuthRepository>(() => AuthRepositoryImpl());
+    binder.singleton<AuthRepository>(() => AuthRepositoryImpl());
   }
 
   @override
-  void exports(Binder i) {
+  void exports(Binder binder) {
     // Public: Exposed API
-    i.singleton<AuthService>(() => AuthService(i.get()));
-  }
-  
-  @override
-  Future<void> onInit() async {
-    // Safe to use imports here - they are guaranteed to be ready
-    await i.get<AuthService>().initialize();
+    binder.singleton<AuthService>(() => AuthService(binder.get()));
   }
 }
 ```
@@ -80,6 +111,7 @@ class AppModule extends Module {
 void main() {
   runApp(ModularityRoot(
     child: MaterialApp(
+      navigatorObservers: [Modularity.observer], // Required for routeBound policy
       home: ModuleScope(
         module: AppModule(),
         child: HomePage(),
@@ -88,6 +120,8 @@ void main() {
   ));
 }
 ```
+
+> **Important**: Add `Modularity.observer` to `navigatorObservers` to enable automatic module disposal when routes pop.
 
 > Need to keep modules alive across tab switches or background navigation layers? Set the retention policy explicitly:
 >
@@ -110,6 +144,379 @@ class HomePage extends StatelessWidget {
     
     return Text('Logged in: ${authService.isLoggedIn}');
   }
+}
+```
+
+## 🧩 Advanced Features
+
+### Lifecycle Hooks (onInit / onDispose)
+
+Use `onInit` for async initialization after all imports are ready:
+
+```dart
+class AuthModule extends Module {
+  @override
+  List<Module> get imports => [ConfigModule()];
+  
+  @override
+  void binds(Binder binder) {
+    binder.lazySingleton<AuthService>(() => AuthServiceImpl(
+      binder.get<Config>(), // From ConfigModule
+    ));
+  }
+  
+  @override
+  Future<void> onInit() async {
+    // Called AFTER binds() and all imports are loaded
+    // Access dependencies via controller if needed
+  }
+  
+  @override
+  void onDispose() {
+    // Cleanup resources when module is disposed
+  }
+}
+```
+
+### Configurable Modules
+
+When a module needs runtime parameters (e.g., entity ID from route arguments), implement `Configurable<T>`:
+
+```dart
+class ProductDetailsModule extends Module implements Configurable<String> {
+  late String productId;
+
+  @override
+  void configure(String id) {
+    productId = id;
+  }
+
+  @override
+  void binds(Binder binder) {
+    binder.singleton<ProductRepository>(() => ProductRepositoryImpl());
+    binder.singleton<ProductBloc>(() => ProductBloc(binder.get(), productId));
+  }
+}
+```
+
+Pass arguments via `ModuleScope`:
+
+```dart
+ModuleScope(
+  module: ProductDetailsModule(),
+  args: productId, // Passed to configure() before binds()
+  child: ProductDetailsPage(),
+)
+```
+
+### Expected Dependencies (expects)
+
+Declare required dependencies from parent scope for fail-fast initialization:
+
+```dart
+class ProfileModule extends Module {
+  @override
+  List<Module> get imports => [/* ... */];
+  
+  @override
+  List<Type> get expects => [UserService, AnalyticsService];
+  
+  @override
+  void binds(Binder binder) {
+    // Safe to use — framework validates presence before binds()
+    binder.singleton<ProfileBloc>(
+      () => ProfileBloc(binder.get<UserService>()),
+    );
+  }
+}
+```
+
+If any `expects` type is missing, initialization throws with a descriptive error.
+
+### Module Interceptors
+
+Intercept lifecycle events for logging, analytics, or debugging:
+
+```dart
+class AnalyticsInterceptor implements ModuleInterceptor {
+  @override
+  void onInit(Module module) {
+    analytics.track('module_init', {'type': module.runtimeType.toString()});
+  }
+
+  @override
+  void onLoaded(Module module) {
+    analytics.track('module_loaded', {'type': module.runtimeType.toString()});
+  }
+
+  @override
+  void onError(Module module, Object error) {
+    crashlytics.recordError(error, reason: 'Module ${module.runtimeType} failed');
+  }
+
+  @override
+  void onDispose(Module module) {
+    analytics.track('module_disposed', {'type': module.runtimeType.toString()});
+  }
+}
+
+// Register globally
+void main() {
+  Modularity.interceptors.add(AnalyticsInterceptor());
+  runApp(MyApp());
+}
+```
+
+### Scoped Overrides (ModuleOverrideScope)
+
+Override dependencies in imported modules without modifying them — perfect for testing and feature flags:
+
+```dart
+// Override AuthModule's internal dependency when used by DashboardModule
+final overrides = ModuleOverrideScope(children: {
+  AuthModule: ModuleOverrideScope(
+    selfOverrides: (binder) {
+      binder.lazySingleton<AuthApi>(() => MockAuthApi());
+    },
+  ),
+});
+
+ModuleScope(
+  module: DashboardModule(),
+  overrideScope: overrides,
+  child: DashboardPage(),
+)
+```
+
+In tests:
+
+```dart
+await testModule(
+  DashboardModule(),
+  (module, binder) {
+    // AuthApi is now MockAuthApi
+    expect(binder.get<AuthService>().api, isA<MockAuthApi>());
+  },
+  overrideScope: overrides,
+);
+```
+
+### Submodules (Static Analysis)
+
+Declare structural relationships for visualization tools (no runtime effect):
+
+```dart
+class AppModule extends Module {
+  @override
+  List<Module> get imports => [CoreModule()];
+  
+  @override
+  List<Module> get submodules => [
+    AuthFeatureModule(),
+    ProfileFeatureModule(),
+    SettingsFeatureModule(),
+  ];
+}
+```
+
+Submodules appear in the dependency graph generated by `modularity_cli`.
+
+### Hot Reload Support
+
+Modules support Flutter's hot reload out of the box. Override `hotReload` for custom refresh logic:
+
+```dart
+class DashboardModule extends Module {
+  @override
+  void binds(Binder binder) {
+    binder.lazySingleton<DashboardBloc>(() => DashboardBloc());
+    binder.factory<ChartRenderer>(() => ChartRenderer()); // Always fresh
+  }
+  
+  @override
+  void hotReload(Binder binder) {
+    // Called on hot reload — refresh factories without losing singleton state
+    binder.factory<ChartRenderer>(() => ChartRenderer());
+  }
+}
+```
+
+During hot reload:
+1. Singletons are preserved (same instance)
+2. Factories are re-registered with new code
+3. `ModuleOverrideScope` is re-applied automatically
+
+### Custom Retention Identity
+
+For advanced caching scenarios, implement `RetentionIdentityProvider`:
+
+```dart
+class UserProfileModule extends Module with RetentionIdentityProvider {
+  final String userId;
+  UserProfileModule(this.userId);
+  
+  @override
+  Object? buildRetentionIdentity(ModuleRetentionContext context) {
+    // Cache by userId, not just module type
+    return 'user-profile-$userId';
+  }
+}
+```
+
+### ModularityRoot Configuration
+
+Customize framework behavior at the root level:
+
+```dart
+ModularityRoot(
+  // Custom Binder factory (e.g., GetItBinderFactory for GetIt integration)
+  binderFactory: SimpleBinderFactory(),
+  
+  // Default Loading UI for all ModuleScopes
+  defaultLoadingBuilder: (context) => const Center(
+    child: CircularProgressIndicator(),
+  ),
+  
+  // Default Error UI for all ModuleScopes
+  defaultErrorBuilder: (context, error, retry) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Error: $error'),
+        ElevatedButton(onPressed: retry, child: Text('Retry')),
+      ],
+    ),
+  ),
+  
+  child: MaterialApp(...),
+)
+```
+
+Override per-module with `ModuleScope`:
+
+```dart
+ModuleScope(
+  module: ProfileModule(),
+  loadingBuilder: (context) => ProfileShimmer(),
+  errorBuilder: (context, error, retry) => ProfileErrorView(error, retry),
+  child: ProfilePage(),
+)
+```
+
+## 🔌 Router Integration
+
+### GoRouter
+
+```dart
+final router = GoRouter(
+  observers: [Modularity.observer], // Required!
+  routes: [
+    GoRoute(
+      path: '/product/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return ModuleScope(
+          module: ProductModule(),
+          args: id, // Configurable<String>
+          child: ProductPage(),
+        );
+      },
+    ),
+  ],
+);
+
+// main.dart
+runApp(ModularityRoot(
+  child: MaterialApp.router(routerConfig: router),
+));
+```
+
+### AutoRoute
+
+```dart
+@AutoRouterConfig()
+class AppRouter extends RootStackRouter {
+  @override
+  List<AutoRoute> get routes => [
+    AutoRoute(path: '/product/:id', page: ProductRoute.page),
+  ];
+}
+
+// main.dart
+final appRouter = AppRouter();
+runApp(ModularityRoot(
+  child: MaterialApp.router(
+    routerConfig: appRouter.config(
+      navigatorObservers: () => [Modularity.observer],
+    ),
+  ),
+));
+```
+
+## 📊 CLI Visualization
+
+Generate dependency graphs with `modularity_cli`:
+
+```dart
+// tool/visualize.dart
+import 'package:modularity_cli/modularity_cli.dart';
+
+void main() async {
+  await GraphVisualizer.visualize(
+    AppModule(),
+    renderer: GraphRenderer.g6, // Interactive AntV G6
+  );
+}
+```
+
+Run with `dart run tool/visualize.dart` — opens an interactive diagram showing:
+- Module hierarchy and imports
+- Public exports vs private bindings
+- Dependency types (singleton, factory, instance)
+
+| Renderer | Description |
+|----------|-------------|
+| `graphviz` | Static DOT diagram via quickchart.io |
+| `g6` | Interactive drag-and-zoom with tooltips |
+
+## 🔧 DI Container Adapters
+
+### GetIt Integration
+
+Use your existing GetIt setup with Modularity:
+
+```dart
+import 'package:modularity_get_it/modularity_get_it.dart';
+
+void main() {
+  runApp(ModularityRoot(
+    binderFactory: GetItBinderFactory(), // Uses global GetIt.instance
+    child: MaterialApp(...),
+  ));
+}
+```
+
+For isolated instances:
+
+```dart
+GetItBinderFactory(useGlobalInstance: false)
+```
+
+### Injectable Integration
+
+For code generation with `injectable`:
+
+```dart
+// See modularity_injectable package
+@InjectableInit()
+void configureDependencies() => getIt.init();
+
+void main() {
+  configureDependencies();
+  runApp(ModularityRoot(
+    binderFactory: GetItBinderFactory(),
+    child: MaterialApp(...),
+  ));
 }
 ```
 
@@ -206,6 +613,18 @@ Modularity.lifecycleLogger = (event, type, {retentionKey, details}) {
 ```
 
 Available events: `created`, `reused`, `registered`, `disposed`, `evicted`, `released`, `routeTerminated`.
+
+## 📖 Binder API Reference
+
+| Method | Description |
+|--------|-------------|
+| `factory<T>()` / `registerFactory<T>()` | New instance on each `get<T>()` call |
+| `singleton<T>()` / `registerSingleton<T>()` | Instance created immediately |
+| `lazySingleton<T>()` / `registerLazySingleton<T>()` | Instance created on first access |
+| `get<T>()` | Retrieve dependency (throws if not found) |
+| `tryGet<T>()` | Retrieve dependency (returns null if not found) |
+| `contains<T>()` | Check if type is registered |
+| `parent<T>()` | Get from parent scope only |
 
 ## ⚠️ Retention Key vs Override Scope
 
