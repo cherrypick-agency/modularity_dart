@@ -1,18 +1,27 @@
 import 'package:get_it/get_it.dart';
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-/// Binder implementation backed by scoped GetIt instances.
-class GetItBinder implements ExportableBinder {
+/// [Binder] implementation backed by two separate [GetIt] instances (private
+/// and public scopes), designed for integration with the `injectable` package.
+///
+/// This variant lives in `modularity_injectable` and manages two isolated
+/// [GetIt] containers: one for private module registrations and another for
+/// publicly exported dependencies. It tracks registered types manually to
+/// support [ExportableBinder] semantics.
+///
+/// **Note:** A different class also named `GetItBinder` exists in
+/// `modularity_get_it` (the standalone adapter). That variant uses a single
+/// scoped [GetIt] instance together with [RegistrationAwareBinder] support.
+/// Choose the implementation that matches your integration needs.
+class GetItBinder implements ExportableBinder, DisposableBinder {
   /// Create a binder with optional [imports] and [parent] scope.
   ///
   /// Each instance gets its own private and public [GetIt] containers.
-  GetItBinder({
-    List<Binder> imports = const [],
-    Binder? parent,
-  })  : _privateScope = GetIt.asNewInstance(),
-        _publicScope = GetIt.asNewInstance(),
-        _imports = imports.toList(),
-        _parent = parent {
+  GetItBinder({List<Binder> imports = const [], Binder? parent})
+    : _privateScope = GetIt.asNewInstance(),
+      _publicScope = GetIt.asNewInstance(),
+      _imports = imports.toList(),
+      _parent = parent {
     // Allow reassignment for hot reload support
     _publicScope.allowReassignment = true;
   }
@@ -81,10 +90,12 @@ class GetItBinder implements ExportableBinder {
     _register<T>((scope) => scope.registerSingleton<T>(instance));
   }
 
+  @Deprecated('Use registerLazySingleton instead')
   @override
   void singleton<T extends Object>(T Function() factory) =>
       registerLazySingleton(factory);
 
+  @Deprecated('Use registerFactory instead')
   @override
   void factory<T extends Object>(T Function() factory) =>
       registerFactory(factory);
@@ -96,10 +107,7 @@ class GetItBinder implements ExportableBinder {
     throw DependencyNotFoundException(
       'Dependency of type $T not found in current scope.',
       requestedType: T,
-      availableTypes: [
-        ..._privateTypes,
-        ..._publicTypes,
-      ],
+      availableTypes: [..._privateTypes, ..._publicTypes],
     );
   }
 
@@ -176,16 +184,17 @@ class GetItBinder implements ExportableBinder {
   @override
   bool containsPublic(Type type) => _publicTypes.contains(type);
 
-  /// Dispose both GetIt scopes (useful for tests).
-  void dispose() {
+  /// Dispose both GetIt scopes and clear internal state.
+  @override
+  Future<void> dispose() async {
     _publicTypes.clear();
     _publicDisposers.clear();
     _publicSealed = false;
     _privateTypes.clear();
     _privateDisposers.clear();
-    // Synchronously reset both scopes
-    _privateScope.reset(dispose: false);
-    _publicScope.reset(dispose: false);
+    // Reset both scopes
+    await _privateScope.reset(dispose: false);
+    await _publicScope.reset(dispose: false);
   }
 
   /// Text dump describing current registrations.
@@ -221,9 +230,7 @@ class GetItBinder implements ExportableBinder {
     return buffer.toString();
   }
 
-  void _register<T extends Object>(
-    void Function(GetIt scope) registerFn,
-  ) {
+  void _register<T extends Object>(void Function(GetIt scope) registerFn) {
     final scope = _isExportMode ? _publicScope : _privateScope;
     final typeSet = _isExportMode ? _publicTypes : _privateTypes;
     final disposers = _isExportMode ? _publicDisposers : _privateDisposers;

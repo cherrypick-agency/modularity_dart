@@ -79,82 +79,92 @@ GetIt _initExportsNeedsParent(
 
 void main() {
   group('BinderGetIt', () {
-    test('export factory can resolve private dependency via Binder fallback',
-        () {
-      final binder = GetItBinder();
+    test(
+      'export factory can resolve private dependency via Binder fallback',
+      () {
+        final binder = GetItBinder();
 
-      ModularityInjectableBridge.configureInternal(binder, _initInternal);
-      ModularityInjectableBridge.configureExports(binder, _initExports);
-      binder.sealPublicScope();
+        ModularityInjectableBridge.configureInternal(binder, _initInternal);
+        ModularityInjectableBridge.configureExports(binder, _initExports);
+        binder.sealPublicScope();
 
-      final exported = binder.get<_ExportedService>();
-      expect(exported.dep, isA<_InternalDep>());
+        final exported = binder.get<_ExportedService>();
+        expect(exported.dep, isA<_InternalDep>());
 
-      binder.dispose();
-    });
+        binder.dispose();
+      },
+    );
 
     test(
-        'factory can resolve dependency from parent binder without manual parent()',
-        () {
-      final parentBinder = GetItBinder();
-      parentBinder.registerLazySingleton<_ParentDep>(() => _ParentDep());
+      'factory can resolve dependency from parent binder without manual parent()',
+      () {
+        final parentBinder = GetItBinder();
+        parentBinder.registerLazySingleton<_ParentDep>(() => _ParentDep());
 
-      final binder = GetItBinder(parent: parentBinder);
-      ModularityInjectableBridge.configureInternal(binder, _initNeedsParent);
+        final binder = GetItBinder(parent: parentBinder);
+        ModularityInjectableBridge.configureInternal(binder, _initNeedsParent);
 
-      final obj = binder.get<_NeedsParent>();
-      expect(obj.parent, isA<_ParentDep>());
+        final obj = binder.get<_NeedsParent>();
+        expect(obj.parent, isA<_ParentDep>());
 
-      binder.dispose();
-      parentBinder.dispose();
-    });
-
-    test(
-        'factory can resolve dependency from imports (public) without manual wiring',
-        () {
-      final provider = GetItBinder();
-      provider.enableExportMode();
-      provider.registerLazySingleton<_ImportDep>(() => _ImportDep());
-      provider.disableExportMode();
-      provider.sealPublicScope();
-
-      final consumer = GetItBinder(imports: [provider]);
-      ModularityInjectableBridge.configureInternal(consumer, _initNeedsImport);
-
-      final obj = consumer.get<_NeedsImport>();
-      expect(obj.dep, isA<_ImportDep>());
-
-      consumer.dispose();
-      provider.dispose();
-    });
+        binder.dispose();
+        parentBinder.dispose();
+      },
+    );
 
     test(
-        'exports container can resolve parent dependency without manual parent()',
-        () {
-      final parentBinder = GetItBinder();
-      parentBinder.registerLazySingleton<_ParentDep>(() => _ParentDep());
+      'factory can resolve dependency from imports (public) without manual wiring',
+      () {
+        final provider = GetItBinder();
+        provider.enableExportMode();
+        provider.registerLazySingleton<_ImportDep>(() => _ImportDep());
+        provider.disableExportMode();
+        provider.sealPublicScope();
 
-      final binder = GetItBinder(parent: parentBinder);
-      ModularityInjectableBridge.configureExports(
-        binder,
-        _initExportsNeedsParent,
-      );
-      binder.sealPublicScope();
+        final consumer = GetItBinder(imports: [provider]);
+        ModularityInjectableBridge.configureInternal(
+          consumer,
+          _initNeedsImport,
+        );
 
-      final obj = binder.get<_NeedsParent>();
-      expect(obj.parent, isA<_ParentDep>());
+        final obj = consumer.get<_NeedsImport>();
+        expect(obj.dep, isA<_ImportDep>());
 
-      binder.dispose();
-      parentBinder.dispose();
-    });
+        consumer.dispose();
+        provider.dispose();
+      },
+    );
+
+    test(
+      'exports container can resolve parent dependency without manual parent()',
+      () {
+        final parentBinder = GetItBinder();
+        parentBinder.registerLazySingleton<_ParentDep>(() => _ParentDep());
+
+        final binder = GetItBinder(parent: parentBinder);
+        ModularityInjectableBridge.configureExports(
+          binder,
+          _initExportsNeedsParent,
+        );
+        binder.sealPublicScope();
+
+        final obj = binder.get<_NeedsParent>();
+        expect(obj.parent, isA<_ParentDep>());
+
+        binder.dispose();
+        parentBinder.dispose();
+      },
+    );
 
     test('isRegistered uses Binder.contains for unnamed lookups', () {
       final parentBinder = GetItBinder();
       parentBinder.registerLazySingleton<_ParentDep>(() => _ParentDep());
 
       final binder = GetItBinder(parent: parentBinder);
-      final wrapped =
-          BinderGetIt(primary: GetIt.asNewInstance(), binder: binder);
+      final wrapped = BinderGetIt(
+        primary: GetIt.asNewInstance(),
+        binder: binder,
+      );
 
       expect(wrapped.isRegistered<_ParentDep>(), isTrue);
       expect(wrapped.isRegistered<_InternalDep>(), isFalse);

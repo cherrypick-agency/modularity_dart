@@ -50,8 +50,9 @@ void main() {
     });
 
     test('private registrations never leak to imports', () {
-      provider
-          .registerLazySingleton<_InternalService>(() => _InternalService());
+      provider.registerLazySingleton<_InternalService>(
+        () => _InternalService(),
+      );
 
       expect(provider.get<_InternalService>(), isA<_InternalService>());
       expect(consumer.tryGet<_InternalService>(), isNull);
@@ -59,8 +60,9 @@ void main() {
 
     test('public registrations propagate through imports', () {
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
       provider.disableExportMode();
       provider.sealPublicScope();
 
@@ -69,27 +71,31 @@ void main() {
 
     test('duplicate exports throw', () {
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
 
       expect(
-        () => provider
-            .registerLazySingleton<_ExportedService>(() => _ExportedService()),
+        () => provider.registerLazySingleton<_ExportedService>(
+          () => _ExportedService(),
+        ),
         throwsA(isA<ModuleConfigurationException>()),
       );
     });
 
     test('sealed public scope rejects new exports until reset', () {
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
       provider.disableExportMode();
       provider.sealPublicScope();
 
       provider.enableExportMode();
       expect(
-        () => provider
-            .registerLazySingleton<_AnotherExport>(() => _AnotherExport()),
+        () => provider.registerLazySingleton<_AnotherExport>(
+          () => _AnotherExport(),
+        ),
         throwsA(isA<ModuleConfigurationException>()),
       );
 
@@ -108,8 +114,9 @@ void main() {
     });
 
     test('singleton caches instance after first call', () {
-      provider
-          .registerLazySingleton<_SingletonService>(() => _SingletonService());
+      provider.registerLazySingleton<_SingletonService>(
+        () => _SingletonService(),
+      );
 
       final first = provider.get<_SingletonService>();
       final second = provider.get<_SingletonService>();
@@ -129,8 +136,9 @@ void main() {
 
     test('parent scope lookup works', () {
       final parentBinder = GetItBinder();
-      parentBinder
-          .registerLazySingleton<_ParentService>(() => _ParentService());
+      parentBinder.registerLazySingleton<_ParentService>(
+        () => _ParentService(),
+      );
 
       final childBinder = GetItBinder(parent: parentBinder);
 
@@ -143,18 +151,22 @@ void main() {
 
     test('resolution priority: local > imports > parent', () {
       final parentBinder = GetItBinder();
-      parentBinder
-          .registerLazySingleton<_SharedService>(() => _SharedService());
+      parentBinder.registerLazySingleton<_SharedService>(
+        () => _SharedService(),
+      );
 
       final importBinder = GetItBinder();
       importBinder.enableExportMode();
-      importBinder
-          .registerLazySingleton<_SharedService>(() => _SharedService());
+      importBinder.registerLazySingleton<_SharedService>(
+        () => _SharedService(),
+      );
       importBinder.disableExportMode();
       importBinder.sealPublicScope();
 
-      final localBinder =
-          GetItBinder(parent: parentBinder, imports: [importBinder]);
+      final localBinder = GetItBinder(
+        parent: parentBinder,
+        imports: [importBinder],
+      );
       final localInstance = _SharedService();
       localBinder.registerSingleton<_SharedService>(localInstance);
 
@@ -166,11 +178,13 @@ void main() {
     });
 
     test('debugGraph contains private and public types', () {
-      provider
-          .registerLazySingleton<_InternalService>(() => _InternalService());
+      provider.registerLazySingleton<_InternalService>(
+        () => _InternalService(),
+      );
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
       provider.disableExportMode();
 
       final graph = provider.debugGraph();
@@ -183,12 +197,14 @@ void main() {
 
     test('debugGraph with imports includes nested binders', () {
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
       provider.disableExportMode();
 
-      consumer
-          .registerLazySingleton<_InternalService>(() => _InternalService());
+      consumer.registerLazySingleton<_InternalService>(
+        () => _InternalService(),
+      );
 
       final graph = consumer.debugGraph(includeImports: true);
 
@@ -197,15 +213,17 @@ void main() {
       expect(graph, contains('_ExportedService'));
     });
 
-    test('dispose clears both scopes', () {
-      provider
-          .registerLazySingleton<_InternalService>(() => _InternalService());
+    test('dispose clears both scopes', () async {
+      provider.registerLazySingleton<_InternalService>(
+        () => _InternalService(),
+      );
       provider.enableExportMode();
-      provider
-          .registerLazySingleton<_ExportedService>(() => _ExportedService());
+      provider.registerLazySingleton<_ExportedService>(
+        () => _ExportedService(),
+      );
       provider.disableExportMode();
 
-      provider.dispose();
+      await provider.dispose();
 
       expect(provider.tryGet<_InternalService>(), isNull);
       expect(provider.tryGetPublic<_ExportedService>(), isNull);

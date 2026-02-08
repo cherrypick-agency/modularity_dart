@@ -16,8 +16,8 @@ GetIt adapter for the Modularity framework. Allows using [GetIt](https://pub.dev
 
 ```yaml
 dependencies:
-  modularity_get_it: ^0.0.1
-  modularity_core: ^0.0.1
+  modularity_get_it: ^0.2.0
+  modularity_core: ^0.2.0
 ```
 
 ## Usage

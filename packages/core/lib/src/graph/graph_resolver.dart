@@ -70,7 +70,27 @@ class GraphResolver {
           );
         }
         // Smart Wait: Wait until the other branch finishes
-        await controller.status.firstWhere((s) => s == ModuleStatus.loaded);
+        await controller.status.firstWhere(
+          (s) =>
+              s == ModuleStatus.loaded ||
+              s == ModuleStatus.error ||
+              s == ModuleStatus.disposed,
+        );
+
+        if (controller.currentStatus == ModuleStatus.error) {
+          throw ModuleLifecycleException(
+            'Dependent module $type failed to load: ${controller.lastError}',
+            moduleType: type,
+            state: ModuleStatus.error,
+          );
+        }
+        if (controller.currentStatus == ModuleStatus.disposed) {
+          throw ModuleLifecycleException(
+            'Dependent module $type was disposed during initialization.',
+            moduleType: type,
+            state: ModuleStatus.disposed,
+          );
+        }
       } else if (controller.currentStatus == ModuleStatus.error) {
         throw ModuleLifecycleException(
           'Dependent module $type failed to load: ${controller.lastError}',

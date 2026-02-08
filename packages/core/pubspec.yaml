@@ -2,6 +2,7 @@ name: modularity_core
 description: Core implementation of Modularity framework providing dependency injection container and module lifecycle management.
 version: 0.2.0
 repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/core
+homepage: https://github.com/cherrypick-agency/modularity_dart
 issue_tracker: https://github.com/cherrypick-agency/modularity_dart/issues
 topics:
   - dependency-injection

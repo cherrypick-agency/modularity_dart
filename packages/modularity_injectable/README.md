@@ -17,7 +17,7 @@ Optional integration package that connects **injectable** + **GetIt** code gener
 
 ```yaml
 dependencies:
-  modularity_injectable: ^0.1.1
+  modularity_injectable: ^0.2.0
 
 dev_dependencies:
   build_runner: ^2.4.0

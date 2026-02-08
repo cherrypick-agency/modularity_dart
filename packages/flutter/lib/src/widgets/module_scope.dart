@@ -153,12 +153,9 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     final factory = ModularityRoot.binderFactoryOf(context);
 
     // Scope Chaining: Find Parent Binder
-    Binder? parentBinder;
-    try {
-      final parentProvider = context
-          .dependOnInheritedWidgetOfExactType<ModuleProvider>();
-      parentBinder = parentProvider?.controller.binder;
-    } catch (_) {}
+    final parentProvider = context
+        .dependOnInheritedWidgetOfExactType<ModuleProvider>();
+    final parentBinder = parentProvider?.controller.binder;
 
     // Create Binder with parent
     final binder = factory.create(parentBinder);
@@ -302,9 +299,17 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     _strategy = null;
 
     if (strategy != null) {
-      unawaited(strategy.onStateDispose());
+      unawaited(
+        strategy.onStateDispose().catchError((Object e) {
+          debugPrint('[Modularity] Error during strategy dispose: $e');
+        }),
+      );
     } else {
-      unawaited(_releaseController(disposeController: true));
+      unawaited(
+        _releaseController(disposeController: true).catchError((Object e) {
+          debugPrint('[Modularity] Error during controller dispose: $e');
+        }),
+      );
     }
 
     super.dispose();

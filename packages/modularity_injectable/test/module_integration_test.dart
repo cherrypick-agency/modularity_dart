@@ -66,33 +66,35 @@ void main() {
       expect(controller.currentStatus, equals(ModuleStatus.disposed));
     });
 
-    test('import chain with GetItBinder: provider -> consumer with expects',
-        () async {
-      final registry = <ModuleRegistryKey, ModuleController>{};
+    test(
+      'import chain with GetItBinder: provider -> consumer with expects',
+      () async {
+        final registry = <ModuleRegistryKey, ModuleController>{};
 
-      final providerBinder = GetItBinder();
-      final providerController = ModuleController(
-        ProviderModule(),
-        binder: providerBinder,
-        binderFactory: const GetItBinderFactory(),
-      );
+        final providerBinder = GetItBinder();
+        final providerController = ModuleController(
+          ProviderModule(),
+          binder: providerBinder,
+          binderFactory: const GetItBinderFactory(),
+        );
 
-      final consumerModule = ConsumerModule();
-      final consumerBinder = GetItBinder();
-      final consumerController = ModuleController(
-        consumerModule,
-        binder: consumerBinder,
-        binderFactory: const GetItBinderFactory(),
-      );
+        final consumerModule = ConsumerModule();
+        final consumerBinder = GetItBinder();
+        final consumerController = ModuleController(
+          consumerModule,
+          binder: consumerBinder,
+          binderFactory: const GetItBinderFactory(),
+        );
 
-      await consumerController.initialize(registry);
+        await consumerController.initialize(registry);
 
-      expect(consumerModule.resolved, isA<PublicApi>());
-      expect(consumerController.currentStatus, equals(ModuleStatus.loaded));
+        expect(consumerModule.resolved, isA<PublicApi>());
+        expect(consumerController.currentStatus, equals(ModuleStatus.loaded));
 
-      await providerController.dispose();
-      await consumerController.dispose();
-    });
+        await providerController.dispose();
+        await consumerController.dispose();
+      },
+    );
 
     test('hot reload with GetItBinder rebinds without errors', () async {
       final module = StandaloneModule();

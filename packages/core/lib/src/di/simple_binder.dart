@@ -11,7 +11,8 @@ class _Registration {
 
 /// Simple Map-based Binder implementation.
 /// Supports separation into Public (Exports) and Private (Binds) dependencies.
-class SimpleBinder implements ExportableBinder, RegistrationAwareBinder {
+class SimpleBinder
+    implements ExportableBinder, RegistrationAwareBinder, DisposableBinder {
   /// Create a [SimpleBinder] with optional imported [Binder] list and parent scope.
   SimpleBinder({List<Binder> imports = const [], Binder? parent})
     : _imports = imports.toList(),
@@ -99,11 +100,13 @@ class SimpleBinder implements ExportableBinder, RegistrationAwareBinder {
   }
 
   /// Shorthand alias for [registerLazySingleton].
+  @Deprecated('Use registerLazySingleton instead')
   @override
   void singleton<T extends Object>(T Function() factory) =>
       registerLazySingleton(factory);
 
   /// Shorthand alias for [registerFactory].
+  @Deprecated('Use registerFactory instead')
   @override
   void factory<T extends Object>(T Function() factory) =>
       registerFactory(factory);
@@ -267,7 +270,8 @@ class SimpleBinder implements ExportableBinder, RegistrationAwareBinder {
   }
 
   /// Release resources.
-  void dispose() {
+  @override
+  Future<void> dispose() async {
     _privateRegistrations.clear();
     _publicRegistrations.clear();
     _publicSealed = false;

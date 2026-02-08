@@ -2,7 +2,7 @@
 
 Zero-dependency interfaces for the Modularity framework.
 
-This package defines the core contracts (`Module`, `Binder`, `Disposable`) used by `modularity_core` and other packages.
+This package defines the core contracts (`Module`, `Binder`, `ExportableBinder`, `DisposableBinder`) used by `modularity_core` and other packages.
 It contains no implementation logic and has no dependencies, making it lightweight and easy to implement.
 
 ## Usage

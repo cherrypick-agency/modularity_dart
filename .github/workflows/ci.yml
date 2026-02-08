@@ -35,4 +35,12 @@ jobs:
       - name: Run Tests
         run: melos run test:all
 
+      - name: Run Tests with Coverage
+        run: melos run test:coverage
 
+      - name: Verify publishable packages
+        run: |
+          for pkg in packages/contracts packages/core packages/flutter packages/modularity_injectable packages/adapters/modularity_get_it packages/modularity_cli packages/modularity_test; do
+            echo "Checking $pkg..."
+            cd $pkg && dart pub publish --dry-run && cd -
+          done

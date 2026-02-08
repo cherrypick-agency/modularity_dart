@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
-import 'package:injectable/injectable.dart' as injectable
+import 'package:injectable/injectable.dart'
+    as injectable
     show EnvironmentFilter;
 import 'package:modularity_contracts/modularity_contracts.dart';
 import 'package:modularity_injectable/modularity_injectable.dart';
@@ -130,10 +131,7 @@ GetIt _mixedEnvInit(
     () => _ExportedServiceA(),
     envs: {modularityExportEnv.name},
   );
-  register<_ExportedServiceB>(
-    () => _ExportedServiceB(),
-    envs: {'other_env'},
-  );
+  register<_ExportedServiceB>(() => _ExportedServiceB(), envs: {'other_env'});
 
   return getIt;
 }

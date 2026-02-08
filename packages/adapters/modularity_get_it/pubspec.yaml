@@ -2,6 +2,7 @@ name: modularity_get_it
 description: GetIt adapter for Modularity framework. Provides GetItBinder implementation for seamless DI integration.
 version: 0.2.0
 repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/adapters/modularity_get_it
+homepage: https://github.com/cherrypick-agency/modularity_dart
 issue_tracker: https://github.com/cherrypick-agency/modularity_dart/issues
 topics:
   - dependency-injection

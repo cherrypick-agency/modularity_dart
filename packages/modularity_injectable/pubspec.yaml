@@ -11,12 +11,12 @@ topics:
   - injectable
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
 
 resolution: workspace
 
 dependencies:
-  get_it: '>=7.6.0 <10.0.0'
+  get_it: '>=8.0.0 <10.0.0'
   injectable: '>=2.3.0 <3.0.0'
   modularity_contracts: ^0.2.0
   modularity_core: ^0.2.0

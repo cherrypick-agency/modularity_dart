@@ -2,6 +2,7 @@ name: modularity_cli
 description: CLI tools for Modularity framework. Provides module graph visualization and dependency analysis utilities.
 version: 0.2.0
 repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/modularity_cli
+homepage: https://github.com/cherrypick-agency/modularity_dart
 issue_tracker: https://github.com/cherrypick-agency/modularity_dart/issues
 topics:
   - dependency-injection

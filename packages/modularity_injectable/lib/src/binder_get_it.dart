@@ -16,11 +16,9 @@ import 'package:modularity_contracts/modularity_contracts.dart' as contracts;
 class BinderGetIt implements GetIt {
   /// Create a [BinderGetIt] wrapping the given [primary] GetIt instance
   /// and falling back to [binder] for unresolved lookups.
-  BinderGetIt({
-    required GetIt primary,
-    required contracts.Binder binder,
-  })  : _primary = primary,
-        _binder = binder;
+  BinderGetIt({required GetIt primary, required contracts.Binder binder})
+    : _primary = primary,
+      _binder = binder;
 
   final GetIt _primary;
   final contracts.Binder _binder;
@@ -37,13 +35,12 @@ class BinderGetIt implements GetIt {
     dynamic param1,
     dynamic param2,
     Type? type,
-  }) =>
-      get<T>(
-        instanceName: instanceName,
-        param1: param1,
-        param2: param2,
-        type: type,
-      );
+  }) => get<T>(
+    instanceName: instanceName,
+    param1: param1,
+    param2: param2,
+    type: type,
+  );
 
   @override
   T get<T extends Object>({
@@ -54,7 +51,8 @@ class BinderGetIt implements GetIt {
   }) {
     // If caller uses GetIt-only features (named registrations / params),
     // delegate without trying Binder fallbacks.
-    final usesAdvancedGetItFeatures = instanceName != null ||
+    final usesAdvancedGetItFeatures =
+        instanceName != null ||
         param1 != null ||
         param2 != null ||
         type != null;
@@ -85,7 +83,8 @@ class BinderGetIt implements GetIt {
     dynamic param2,
     Type? type,
   }) async {
-    final usesAdvancedGetItFeatures = instanceName != null ||
+    final usesAdvancedGetItFeatures =
+        instanceName != null ||
         param1 != null ||
         param2 != null ||
         type != null;
@@ -129,18 +128,16 @@ class BinderGetIt implements GetIt {
   void registerFactory<T extends Object>(
     FactoryFunc<T> factoryFunc, {
     String? instanceName,
-  }) =>
-      _primary.registerFactory<T>(factoryFunc, instanceName: instanceName);
+  }) => _primary.registerFactory<T>(factoryFunc, instanceName: instanceName);
 
   @override
   void registerFactoryParam<T extends Object, P1, P2>(
     FactoryFuncParam<T, P1, P2> factoryFunc, {
     String? instanceName,
-  }) =>
-      _primary.registerFactoryParam<T, P1, P2>(
-        factoryFunc,
-        instanceName: instanceName,
-      );
+  }) => _primary.registerFactoryParam<T, P1, P2>(
+    factoryFunc,
+    instanceName: instanceName,
+  );
 
   @override
   void registerLazySingleton<T extends Object>(
@@ -149,14 +146,13 @@ class BinderGetIt implements GetIt {
     String? instanceName,
     void Function(T)? onCreated,
     bool useWeakReference = false,
-  }) =>
-      _primary.registerLazySingleton<T>(
-        factoryFunc,
-        dispose: dispose,
-        instanceName: instanceName,
-        onCreated: onCreated,
-        useWeakReference: useWeakReference,
-      );
+  }) => _primary.registerLazySingleton<T>(
+    factoryFunc,
+    dispose: dispose,
+    instanceName: instanceName,
+    onCreated: onCreated,
+    useWeakReference: useWeakReference,
+  );
 
   @override
   T registerSingleton<T extends Object>(
@@ -164,13 +160,12 @@ class BinderGetIt implements GetIt {
     DisposingFunc<T>? dispose,
     String? instanceName,
     bool? signalsReady,
-  }) =>
-      _primary.registerSingleton<T>(
-        instance,
-        dispose: dispose,
-        instanceName: instanceName,
-        signalsReady: signalsReady ?? false,
-      );
+  }) => _primary.registerSingleton<T>(
+    instance,
+    dispose: dispose,
+    instanceName: instanceName,
+    signalsReady: signalsReady ?? false,
+  );
 
   @override
   void registerSingletonAsync<T extends Object>(
@@ -180,15 +175,14 @@ class BinderGetIt implements GetIt {
     DisposingFunc<T>? dispose,
     void Function(T)? onCreated,
     bool? signalsReady,
-  }) =>
-      _primary.registerSingletonAsync<T>(
-        factoryFunc,
-        instanceName: instanceName,
-        dependsOn: dependsOn,
-        dispose: dispose,
-        onCreated: onCreated,
-        signalsReady: signalsReady ?? false,
-      );
+  }) => _primary.registerSingletonAsync<T>(
+    factoryFunc,
+    instanceName: instanceName,
+    dependsOn: dependsOn,
+    dispose: dispose,
+    onCreated: onCreated,
+    signalsReady: signalsReady ?? false,
+  );
 
   @override
   void registerSingletonWithDependencies<T extends Object>(
@@ -197,48 +191,40 @@ class BinderGetIt implements GetIt {
     required Iterable<Type>? dependsOn,
     DisposingFunc<T>? dispose,
     bool? signalsReady,
-  }) =>
-      _primary.registerSingletonWithDependencies<T>(
-        factoryFunc,
-        instanceName: instanceName,
-        dependsOn: dependsOn,
-        dispose: dispose,
-        signalsReady: signalsReady ?? false,
-      );
+  }) => _primary.registerSingletonWithDependencies<T>(
+    factoryFunc,
+    instanceName: instanceName,
+    dependsOn: dependsOn,
+    dispose: dispose,
+    signalsReady: signalsReady ?? false,
+  );
 
   @override
   Future<void> allReady({
     Duration? timeout,
     bool ignorePendingAsyncCreation = false,
-  }) =>
-      _primary.allReady(
-        timeout: timeout,
-        ignorePendingAsyncCreation: ignorePendingAsyncCreation,
-      );
+  }) => _primary.allReady(
+    timeout: timeout,
+    ignorePendingAsyncCreation: ignorePendingAsyncCreation,
+  );
 
   @override
   bool allReadySync([bool ignorePendingAsyncCreation = false]) =>
       _primary.allReadySync(ignorePendingAsyncCreation);
 
   @override
-  Future<void> reset({
-    bool dispose = true,
-  }) =>
-      _primary.reset(
-        dispose: dispose,
-      );
+  Future<void> reset({bool dispose = true}) => _primary.reset(dispose: dispose);
 
   @override
   FutureOr<void> resetLazySingleton<T extends Object>({
     DisposingFunc<T>? disposingFunction,
     T? instance,
     String? instanceName,
-  }) =>
-      _primary.resetLazySingleton<T>(
-        disposingFunction: disposingFunction,
-        instance: instance,
-        instanceName: instanceName,
-      );
+  }) => _primary.resetLazySingleton<T>(
+    disposingFunction: disposingFunction,
+    instance: instance,
+    instanceName: instanceName,
+  );
 
   @override
   FutureOr<void> unregister<T extends Object>({
@@ -246,13 +232,12 @@ class BinderGetIt implements GetIt {
     String? instanceName,
     DisposingFunc<T>? disposingFunction,
     bool ignoreReferenceCount = false,
-  }) =>
-      _primary.unregister<T>(
-        instance: instance,
-        instanceName: instanceName,
-        disposingFunction: disposingFunction,
-        ignoreReferenceCount: ignoreReferenceCount,
-      );
+  }) => _primary.unregister<T>(
+    instance: instance,
+    instanceName: instanceName,
+    disposingFunction: disposingFunction,
+    ignoreReferenceCount: ignoreReferenceCount,
+  );
 
   @override
   Future<void> isReady<T extends Object>({
@@ -260,23 +245,18 @@ class BinderGetIt implements GetIt {
     String? instanceName,
     Duration? timeout,
     Object? callee,
-  }) =>
-      _primary.isReady<T>(
-        instance: instance,
-        instanceName: instanceName,
-        timeout: timeout,
-        callee: callee,
-      );
+  }) => _primary.isReady<T>(
+    instance: instance,
+    instanceName: instanceName,
+    timeout: timeout,
+    callee: callee,
+  );
 
   @override
   bool isReadySync<T extends Object>({
     Object? instance,
     String? instanceName,
-  }) =>
-      _primary.isReadySync<T>(
-        instance: instance,
-        instanceName: instanceName,
-      );
+  }) => _primary.isReadySync<T>(instance: instance, instanceName: instanceName);
 
   @override
   void signalReady(Object? instance) => _primary.signalReady(instance);
@@ -285,5 +265,10 @@ class BinderGetIt implements GetIt {
   String toString() => _primary.toString();
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) {
+    throw UnsupportedError(
+      'BinderGetIt does not support ${invocation.memberName}. '
+      'Only the subset of GetIt API used by injectable is implemented.',
+    );
+  }
 }

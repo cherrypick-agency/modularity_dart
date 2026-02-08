@@ -7,11 +7,12 @@ import 'get_it_binder.dart';
 import 'modularity_export_env.dart';
 
 /// Signature of a generated injectable init function.
-typedef InjectableInitFn = GetIt Function(
-  GetIt getIt, {
-  String? environment,
-  EnvironmentFilter? environmentFilter,
-});
+typedef InjectableInitFn =
+    GetIt Function(
+      GetIt getIt, {
+      String? environment,
+      EnvironmentFilter? environmentFilter,
+    });
 
 /// Helper that wires injectable-generated functions into the Modularity lifecycle.
 class ModularityInjectableBridge {

@@ -13,6 +13,7 @@ enum RegistrationStrategy {
 abstract class Binder {
   /// Alias for [registerLazySingleton].
   /// Registers a singleton. Created once on first request (lazy).
+  @Deprecated('Use registerLazySingleton instead')
   void singleton<T extends Object>(T Function() factory);
 
   /// Registers a lazy singleton.
@@ -22,6 +23,7 @@ abstract class Binder {
 
   /// Alias for [registerFactory].
   /// Registers a factory. Creates a new instance on every request.
+  @Deprecated('Use registerFactory instead')
   void factory<T extends Object>(T Function() factory);
 
   /// Registers a factory.
@@ -81,6 +83,17 @@ abstract class ExportableBinder implements Binder {
 
   /// Flag indicating whether the public scope has been sealed.
   bool get isPublicScopeSealed;
+}
+
+/// Contract for a [Binder] that supports explicit disposal of resources.
+///
+/// Implementations should release all internal registrations when [dispose]
+/// is called. The [ModuleController] checks for this interface during its
+/// own disposal to ensure binder resources are freed regardless of the
+/// concrete binder type.
+abstract class DisposableBinder implements Binder {
+  /// Release all resources held by this binder.
+  Future<void> dispose();
 }
 
 /// Additional contract for a Binder that can switch its registration

@@ -2,12 +2,21 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-/// [Binder] implementation backed by a scoped [GetIt] instance.
+/// Standalone [Binder] implementation backed by a single scoped [GetIt]
+/// instance, with [RegistrationAwareBinder] support for strategy switching.
 ///
-/// Supports export mode, registration strategy switching via
-/// [RegistrationAwareBinder], and automatic cleanup of globally
-/// registered types.
-class GetItBinder implements ExportableBinder, RegistrationAwareBinder {
+/// This variant lives in the `modularity_get_it` adapter package. It uses one
+/// [GetIt] container for both private and exported registrations, tracking
+/// exported types via an internal set. It also supports
+/// [RegistrationAwareBinder] which enables switching between `replace` and
+/// `preserveExisting` strategies at runtime (useful for hot reload).
+///
+/// **Note:** A different class also named `GetItBinder` exists in
+/// `modularity_injectable`. That variant manages two separate [GetIt]
+/// instances (private + public) and is designed for `injectable` package
+/// integration. Choose the implementation that matches your integration needs.
+class GetItBinder
+    implements ExportableBinder, RegistrationAwareBinder, DisposableBinder {
   /// Create a binder optionally linked to a [_parent] scope.
   ///
   /// When [_useGlobalInstance] is `true`, the global [GetIt.instance] is
@@ -61,9 +70,13 @@ class GetItBinder implements ExportableBinder, RegistrationAwareBinder {
     // 1. Local
     if (_getIt.isRegistered(type: type)) return true;
 
-    // 2. Imports
+    // 2. Imports (only check public exports)
     for (final imported in _imports) {
-      if (imported.contains(type)) return true;
+      if (imported is ExportableBinder) {
+        if (imported.containsPublic(type)) return true;
+      } else {
+        if (imported.contains(type)) return true;
+      }
     }
 
     // 3. Parent
@@ -153,10 +166,12 @@ class GetItBinder implements ExportableBinder, RegistrationAwareBinder {
     _getIt.registerSingleton<T>(instance);
   }
 
+  @Deprecated('Use registerLazySingleton instead')
   @override
   void singleton<T extends Object>(T Function() factory) =>
       registerLazySingleton(factory);
 
+  @Deprecated('Use registerFactory instead')
   @override
   void factory<T extends Object>(T Function() factory) =>
       registerFactory(factory);
@@ -241,6 +256,9 @@ class GetItBinder implements ExportableBinder, RegistrationAwareBinder {
     }
   }
 
+  @override
+  Future<void> dispose() => reset();
+
   /// Reset all registrations and clear internal tracking state.
   ///
   /// When using the global [GetIt] instance, only types registered through
@@ -285,10 +303,9 @@ class GetItBinder implements ExportableBinder, RegistrationAwareBinder {
       _factoryDelegates.remove(T);
       _lazySingletonDelegates.remove(T);
       _exportedTypes.remove(T);
-      final result = _getIt.unregister<T>();
-      if (result is Future<void>) {
-        unawaited(result);
-      }
+      // unregister is sync unless a custom disposingFunction was provided.
+      // Since we register without dispose callbacks, this is always sync.
+      _getIt.unregister<T>();
     }
   }
 }

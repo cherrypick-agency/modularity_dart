@@ -17,7 +17,7 @@ Core implementation of the Modularity framework, providing Dependency Injection 
 
 ```yaml
 dependencies:
-  modularity_core: ^0.0.1
+  modularity_core: ^0.2.0
 ```
 
 ## Usage

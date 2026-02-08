@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-import '../di/simple_binder.dart';
 import '../di/simple_binder_factory.dart';
 import '../graph/graph_resolver.dart';
 import '../graph/module_registry_key.dart';
@@ -52,7 +51,9 @@ class ModuleController {
   final List<ModuleInterceptor> interceptors;
 
   /// References to the controllers of imported modules.
-  final List<ModuleController> importedControllers = [];
+  List<ModuleController> get importedControllers =>
+      List.unmodifiable(_importedControllers);
+  final List<ModuleController> _importedControllers = [];
 
   /// Broadcast stream of [ModuleStatus] transitions.
   Stream<ModuleStatus> get status => _statusController.stream;
@@ -119,7 +120,7 @@ class ModuleController {
         overrideScope: overrideScope,
       );
 
-      importedControllers.addAll(imports);
+      _importedControllers.addAll(imports);
       final importBinders = imports.map((c) => c.binder).toList();
 
       // 2. Configure Binder with imports
@@ -214,19 +215,18 @@ class ModuleController {
   /// Dispose of the module, its [Binder], and close the status stream.
   Future<void> dispose() async {
     _updateStatus(ModuleStatus.disposed);
-    module.onDispose();
-    if (binder is SimpleBinder) {
-      (binder as SimpleBinder).dispose();
-    } else if (binder is ExportableBinder) {
-      // Try dispose if available, currently only SimpleBinder has explicit dispose method
-      // We might need DisposableBinder interface too.
-    }
-    await _statusController.close();
 
-    // Interceptor: onDispose
+    // Interceptor: onDispose (before closing stream so listeners can still react)
     for (var i in interceptors) {
       i.onDispose(module);
     }
+
+    module.onDispose();
+    if (binder is DisposableBinder) {
+      await (binder as DisposableBinder).dispose();
+    }
+    _importedControllers.clear();
+    await _statusController.close();
   }
 
   void _updateStatus(ModuleStatus newStatus) {
