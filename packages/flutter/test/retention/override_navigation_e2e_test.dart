@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
-import 'package:modularity_flutter/src/retention/module_retainer.dart';
 
 /// Service to track which override was applied.
 abstract class ConfigService {

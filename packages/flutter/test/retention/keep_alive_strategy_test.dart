@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
-import 'package:modularity_flutter/src/retention/module_retainer.dart';
 
 class LifecycleModule extends Module {
   int initCount = 0;
