@@ -1,5 +1,6 @@
 name: modularity_workspace
 description: A modularity workspace.
+repository: https://github.com/cherrypick-agency/modularity_dart
 publish_to: none
 
 environment:
