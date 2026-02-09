@@ -32,11 +32,11 @@ jobs:
           cache-dependency-path: docs-site/package-lock.json
 
       - name: Install dartdoc-vitepress
-        run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git --git-ref main
+        run: dart pub global activate dartdoc_vitepress
 
       - name: Generate API docs
         run: |
-          dart pub global run dartdoc \
+          dart pub global run dartdoc_vitepress \
             --format vitepress \
             --workspace-docs \
             --exclude-packages 'example,complex_app,complex_mobx,example_auto_route,example_bloc,example_go_router,example_riverpod,modularity_injectable_example' \
