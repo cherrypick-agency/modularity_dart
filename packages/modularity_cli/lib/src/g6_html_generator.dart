@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'graph_data.dart';
 
+/// Generates an interactive HTML page using AntV G6 for graph visualization.
 class G6HtmlGenerator {
+  /// Returns a self-contained HTML string visualizing [graphData] with G6.
   static String generate(ModuleGraphData graphData) {
     final jsonData = jsonEncode(graphData.toJson());
 

@@ -99,8 +99,9 @@ class ModuleBindingsAnalyzer {
 
     binder.enableExportMode();
     runPhase('exports', () => module.exports(binder));
-    binder.disableExportMode();
-    binder.sealPublicScope();
+    binder
+      ..disableExportMode()
+      ..sealPublicScope();
 
     final snapshot = ModuleBindingsSnapshot(
       moduleType: type,

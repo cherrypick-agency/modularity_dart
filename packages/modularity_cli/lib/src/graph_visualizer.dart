@@ -112,13 +112,13 @@ class GraphVisualizer {
   /// Generate a Graphviz DOT string representing the module tree of [rootModule].
   @visibleForTesting
   static String generateDot(Module rootModule) {
-    final buffer = StringBuffer();
-    buffer.writeln('digraph Modules {');
-    buffer.writeln(
-      '  node [shape=box, style="filled,rounded", fillcolor="#e3f2fd", fontname="Arial", penwidth=1.5, color="#90caf9"];',
-    );
-    buffer.writeln('  edge [fontname="Arial", fontsize=10];');
-    buffer.writeln('  rankdir=TB;');
+    final buffer = StringBuffer()
+      ..writeln('digraph Modules {')
+      ..writeln(
+        '  node [shape=box, style="filled,rounded", fillcolor="#e3f2fd", fontname="Arial", penwidth=1.5, color="#90caf9"];',
+      )
+      ..writeln('  edge [fontname="Arial", fontsize=10];')
+      ..writeln('  rankdir=TB;');
 
     final visited = <Type>{};
     final queue = [rootModule];
@@ -135,9 +135,10 @@ class GraphVisualizer {
       final attributes = <String>['label=${_buildNodeLabel(snapshot)}'];
 
       if (current == rootModule) {
-        attributes.add('fillcolor="#bbdefb"');
-        attributes.add('color="#1565c0"');
-        attributes.add('penwidth=2.5');
+        attributes
+          ..add('fillcolor="#bbdefb"')
+          ..add('color="#1565c0"')
+          ..add('penwidth=2.5');
       }
 
       buffer.writeln('  "$currentType" [${attributes.join(', ')}];');
