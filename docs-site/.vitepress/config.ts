@@ -1,11 +1,18 @@
 import { defineConfig } from 'vitepress'
 import { apiSidebar } from './generated/api-sidebar'
 import { guideSidebar } from './generated/guide-sidebar'
+import { dartpadPlugin } from './theme/plugins/dartpad'
 
 export default defineConfig({
   title: 'Modularity',
   description: 'Modular architecture framework for Dart & Flutter',
+  base: '/modularity_dart/',
   ignoreDeadLinks: true,
+  markdown: {
+    config: (md) => {
+      md.use(dartpadPlugin)
+    },
+  },
   themeConfig: {
     search: {
       provider: 'local',
