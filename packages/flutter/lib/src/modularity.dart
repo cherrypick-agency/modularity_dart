@@ -45,7 +45,8 @@ class Modularity {
   Modularity._();
 
   /// Global RouteObserver for Retention Policy.
-  static final RouteObserver<ModalRoute> observer = RouteObserver<ModalRoute>();
+  static final RouteObserver<ModalRoute<dynamic>> observer =
+      RouteObserver<ModalRoute<dynamic>>();
 
   /// Global list of ModuleInterceptors.
   static final List<ModuleInterceptor> interceptors = [];

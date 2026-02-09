@@ -27,7 +27,7 @@ class ModuleRetentionBinding {
     required this.releaseController,
     required this.retainer,
     this.route,
-    RouteObserver<ModalRoute>? observer,
+    RouteObserver<ModalRoute<dynamic>>? observer,
   });
 
   /// Build context of the owning [ModuleScope] widget.
@@ -52,7 +52,7 @@ class ModuleRetentionBinding {
   final ModalRoute<dynamic>? route;
 
   /// Return the global [RouteObserver] registered with [Modularity].
-  RouteObserver<ModalRoute> get observer => Modularity.observer;
+  RouteObserver<ModalRoute<dynamic>> get observer => Modularity.observer;
 }
 
 /// Base class for module retention strategies that govern when a
@@ -224,7 +224,7 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
   /// Create a route-bound retention strategy for the given [binding].
   RouteBoundRetentionStrategy(super.binding);
 
-  ModalRoute? _route;
+  ModalRoute<dynamic>? _route;
   bool _disposedByRoute = false;
 
   @override

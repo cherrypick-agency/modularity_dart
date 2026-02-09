@@ -42,5 +42,5 @@ jobs:
         run: |
           for pkg in packages/contracts packages/core packages/flutter packages/modularity_injectable packages/adapters/modularity_get_it packages/modularity_cli packages/modularity_test; do
             echo "Checking $pkg..."
-            cd $pkg && dart pub publish --dry-run && cd -
+            (cd $pkg && dart pub publish --dry-run)
           done

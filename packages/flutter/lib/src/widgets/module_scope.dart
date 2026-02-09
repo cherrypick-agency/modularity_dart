@@ -102,12 +102,12 @@ class ModuleScope<T extends Module> extends StatefulWidget {
   final ModuleOverrideScope? overrideScope;
 
   @override
-  _ModuleScopeState<T> createState() => _ModuleScopeState<T>();
+  State<ModuleScope<T>> createState() => _ModuleScopeState<T>();
 }
 
 class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   ModuleController? _controller;
-  StreamSubscription? _statusSub;
+  StreamSubscription<ModuleStatus>? _statusSub;
   ModuleStatus _status = ModuleStatus.initial;
   Object? _error;
   late ModuleRetentionPolicy _policy;
@@ -275,7 +275,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   Future<void> _releaseController({required bool disposeController}) async {
     final controller = _controller;
     if (controller == null) return;
-    _statusSub?.cancel();
+    unawaited(_statusSub?.cancel());
     _statusSub = null;
     _controller = null;
     if (disposeController) {

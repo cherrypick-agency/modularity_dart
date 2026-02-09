@@ -42,9 +42,8 @@ class _ModuleRetainerEntry {
     required this.lastAccessed,
     ModalRoute<dynamic>? route,
     FutureOr<void> Function()? onRouteTerminated,
-    int refCount = 0,
-  }) : refCount = refCount,
-       moduleType = controller.module.runtimeType {
+    this.refCount = 0,
+  }) : moduleType = controller.module.runtimeType {
     attachRoute(route: route, onRouteTerminated: onRouteTerminated);
   }
 
