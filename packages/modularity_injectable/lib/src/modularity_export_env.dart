@@ -11,6 +11,7 @@ const modularityExportEnv = Environment(modularityExportEnvName);
 /// Filters injectable registrations so that only dependencies annotated with
 /// [modularityExportEnv] are processed.
 class ModularityExportOnly extends EnvironmentFilter {
+  /// Creates a filter that only allows [modularityExportEnv]-annotated deps.
   const ModularityExportOnly() : super(const {modularityExportEnvName});
 
   @override
