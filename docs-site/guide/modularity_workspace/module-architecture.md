@@ -1,19 +1,16 @@
 # Module Architecture
 
-This guide covers advanced module design: visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and the distinction between submodules and imports.
+Visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and `submodules` vs `imports`.
 
 ## Private vs Public Dependencies
 
-Every module has two scopes managed by `ExportableBinder`:
-
-- **Private** (`binds()`) — internal registrations visible only within the module.
-- **Public** (`exports()`) — registrations visible to modules that import this one.
+Each module has two scopes managed by `ExportableBinder`:
 
 ```dart
 class NetworkModule extends Module {
   @override
   void binds(Binder i) {
-    // Private: implementation detail, not accessible to importers
+    // Private -- invisible to importers
     i.registerLazySingleton<HttpInterceptor>(() => LoggingInterceptor());
     i.registerLazySingleton<HttpClient>(
       () => HttpClient(interceptor: i.get<HttpInterceptor>()),
@@ -22,7 +19,7 @@ class NetworkModule extends Module {
 
   @override
   void exports(Binder i) {
-    // Public: only the API surface is exposed
+    // Public -- the only surface importers can see
     i.registerLazySingleton<ApiClient>(
       () => ApiClient(http: i.get<HttpClient>()),
     );
@@ -30,15 +27,15 @@ class NetworkModule extends Module {
 }
 ```
 
-After `exports()` runs, the public scope is **sealed** — any attempt to register new exports throws a `ModuleConfigurationException`. This guarantees a stable public API surface at runtime.
+After `exports()` completes, the public scope is **sealed**. Further export registrations throw `ModuleConfigurationException`.
 
-### Lookup rules for importers
-
-When module A imports module B, `A.get<T>()` can only see types registered in B's `exports()`. Types from B's `binds()` are invisible to A.
+::: tip
+When module A imports module B, only B's `exports()` types are visible to A. Everything in B's `binds()` stays private.
+:::
 
 ## Module Imports
 
-Use the `imports` getter to declare runtime dependencies between modules. The `GraphResolver` initializes all imports **concurrently** before the importing module's `binds()` runs.
+Override the `imports` getter to declare runtime dependencies. `GraphResolver` initializes all imports **concurrently** before calling the importing module's `binds()`.
 
 ```dart
 class ProfileModule extends Module {
@@ -47,48 +44,43 @@ class ProfileModule extends Module {
 
   @override
   void binds(Binder i) {
-    // AuthService comes from AuthModule.exports()
-    // ApiClient comes from NetworkModule.exports()
     i.registerFactory<ProfileRepository>(
       () => ProfileRepository(
-        auth: i.get<AuthService>(),
-        api: i.get<ApiClient>(),
+        auth: i.get<AuthService>(),   // from AuthModule.exports()
+        api: i.get<ApiClient>(),      // from NetworkModule.exports()
       ),
     );
   }
 }
 ```
 
-### How graph resolution works
+### Graph Resolution
 
-1. `GraphResolver.resolveAndInitImports()` iterates over `module.imports`.
-2. Each import is resolved **concurrently** via `Future.wait`.
-3. If two branches import the same module type, the first branch creates the controller and the second waits for it to finish (deduplication via the global registry).
-4. **Circular dependencies** are detected immediately: if `A -> B -> A` is found, a `CircularDependencyException` is thrown with the full dependency chain.
-5. After all imports are loaded, their binders are added via `binder.addImports()`, making their public exports available to the current module.
+1. `GraphResolver.resolveAndInitImports()` processes `module.imports`.
+2. Each import initializes **concurrently** via `Future.wait`.
+3. Same module type imported by multiple branches is **deduplicated** -- first creator wins, others await.
+4. **Circular dependencies** (`A -> B -> A`) throw `CircularDependencyException` with the full chain.
+5. Resolved binders are injected via `binder.addImports()`.
 
-### Diamond dependencies
+### Diamond Dependencies
 
-If module A imports B and C, and both B and C import D, only one instance of D's controller is created. Both B and C share the same resolved controller from the global registry.
+If B and C both import D, only one D controller is created. Both share it from the global registry.
 
 ## Parent Scope Chaining
 
-When `ModuleScope` widgets are nested in the Flutter tree, each child module automatically gets a reference to the parent module's binder. This enables implicit scope chaining.
+Nested `ModuleScope` widgets form an implicit parent chain. The child's `SimpleBinder` receives the parent binder as a fallback.
 
 ```dart
 // Widget tree:
 // ModuleScope<AppModule>
-//   └── ModuleScope<FeatureModule>
-//         └── FeatureWidget
+//   +-- ModuleScope<FeatureModule>
+//         +-- FeatureWidget
 ```
-
-Inside `FeatureModule`, you can access dependencies from `AppModule` using `parent<T>()`:
 
 ```dart
 class FeatureModule extends Module {
   @override
   void binds(Binder i) {
-    // Explicit parent lookup — reads from AppModule's binder
     i.registerFactory<FeatureService>(
       () => FeatureService(analytics: i.parent<AnalyticsService>()),
     );
@@ -96,22 +88,16 @@ class FeatureModule extends Module {
 }
 ```
 
-### Lookup methods
-
-| Method | Scope searched |
-|--------|---------------|
+| Method | Scope |
+|--------|-------|
 | `get<T>()` / `tryGet<T>()` | Local -> Imports -> Parent (full chain) |
 | `parent<T>()` / `tryParent<T>()` | Parent scope only |
 
-`get<T>()` already walks the full chain (local, imports, parent), so you only need `parent<T>()` when you want to **explicitly** skip local and imported registrations — for example, to avoid shadowing.
+Use `parent<T>()` when you need to **skip** local and import scopes explicitly -- for example, to avoid shadowing a type that exists in both scopes.
 
-### How it works internally
+## The `expects` Contract
 
-`ModuleScopeState` reads the nearest ancestor `ModuleProvider` and passes its `controller.binder` as the parent when creating a new `SimpleBinder` via `BinderFactory.create(parentBinder)`. The `SimpleBinder` stores this reference and delegates to it as the last fallback in `tryGet<T>()`.
-
-## The expects Contract
-
-The `expects` getter declares types that **must** exist in the parent scope or imports before the module initializes. If any type is missing, initialization fails immediately with a `ModuleConfigurationException`.
+Declare types that **must** exist before the module initializes. Missing types fail fast with `ModuleConfigurationException` instead of a late `DependencyNotFoundException`.
 
 ```dart
 class OrderModule extends Module {
@@ -123,7 +109,6 @@ class OrderModule extends Module {
 
   @override
   void binds(Binder i) {
-    // Safe to call — AuthService and ApiClient are guaranteed to exist
     i.registerFactory<OrderService>(
       () => OrderService(
         auth: i.get<AuthService>(),
@@ -135,21 +120,18 @@ class OrderModule extends Module {
 }
 ```
 
-### Validation timing
+::: warning Validation timing
+`expects` is checked **after** imports are resolved but **before** `binds()` runs. The check uses `binder.contains(type)`, which searches imports + parent. Expected types can come from either source.
+:::
 
-`expects` is checked in `ModuleController.initialize()` **after** imports are resolved but **before** `binds()` runs. The check uses `binder.contains(type)`, which searches the full chain (imports + parent). This means expected types can come from either imported modules or a parent `ModuleScope`.
-
-### When to use expects
-
-- When a module relies on types provided by a parent scope (not via imports).
-- To surface misconfiguration early instead of getting a `DependencyNotFoundException` at an arbitrary `get<T>()` call later.
+Use `expects` when a module depends on types provided by a **parent scope** rather than its own imports.
 
 ## Configurable Modules
 
-Modules that need runtime parameters implement the `Configurable<T>` mixin. The `configure(T args)` method is called **before** `binds()` and `onInit()`.
+Modules that need runtime parameters implement `Configurable<T>`. The `configure(T args)` method runs **before** `binds()`.
 
 ```dart
-class UserProfileModule extends Module with Configurable<String> {
+class UserProfileModule extends Module implements Configurable<String> {
   late final String _userId;
 
   @override
@@ -176,28 +158,24 @@ ModuleScope<UserProfileModule>(
 )
 ```
 
-### Type safety
-
-If the wrong argument type is passed, `ModuleController.configure()` catches the `TypeError` and wraps it in a `ModuleLifecycleException` with a clear message.
-
-### configure() lifecycle position
+Full lifecycle order:
 
 ```
 configure(args) -> imports resolved -> expects validated -> binds() -> exports() -> onInit()
 ```
 
-## Submodules vs Imports
+If the wrong argument type is passed, `ModuleController` wraps the `TypeError` in a `ModuleLifecycleException`.
 
-Modularity distinguishes between two module relationships:
+## Submodules vs Imports
 
 | | `imports` | `submodules` |
 |--|-----------|-------------|
-| **Purpose** | Runtime DI — dependency resolution | Structural — static analysis and visualization |
-| **Initialization** | Resolved and initialized by `GraphResolver` | Not initialized by the framework |
-| **Binder access** | Public exports are injected into the importing module's binder | No binder connection |
-| **Use case** | Module A needs types from module B at runtime | Module A is logically composed of sub-features |
+| **Purpose** | Runtime DI | Static analysis and visualization |
+| **Initialization** | Resolved by `GraphResolver` | Not initialized by the framework |
+| **Binder access** | Public exports injected into importer | No binder connection |
+| **Use case** | Need types from another module | Document feature composition for tooling |
 
-### imports — runtime DI
+### imports -- runtime DI
 
 ```dart
 class CheckoutModule extends Module {
@@ -206,7 +184,6 @@ class CheckoutModule extends Module {
 
   @override
   void binds(Binder i) {
-    // CartService from CartModule, PaymentService from PaymentModule
     i.registerFactory<CheckoutService>(
       () => CheckoutService(
         cart: i.get<CartService>(),
@@ -217,7 +194,7 @@ class CheckoutModule extends Module {
 }
 ```
 
-### submodules — structural composition
+### submodules -- structural composition
 
 ```dart
 class AppModule extends Module {
@@ -230,16 +207,11 @@ class AppModule extends Module {
 
   @override
   void binds(Binder i) {
-    // submodules are NOT resolved here — they are for tooling only
     i.registerSingleton<AppConfig>(AppConfig());
   }
 }
 ```
 
-Submodules are used by `modularity_cli` tools (`ModuleBindingsAnalyzer`, `GraphVisualizer`) to build a full dependency graph for visualization and static analysis. They should use `Configurable` instead of constructor arguments so that tooling can instantiate them cleanly.
+Submodules are consumed by `modularity_cli` tools (`ModuleBindingsAnalyzer`, `GraphVisualizer`) for dependency graph visualization. They should use `Configurable` instead of constructor arguments so tooling can instantiate them cleanly.
 
-### When to use which
-
-- Need a type from another module at runtime? Use **imports**.
-- Want to document that a feature module is part of a larger module for tooling and architecture diagrams? Use **submodules**.
-- A module can appear in both lists if it serves both purposes.
+A module can appear in both `imports` and `submodules` if needed.

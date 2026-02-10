@@ -1,10 +1,8 @@
 # Getting Started
 
-This guide walks you through adding Modularity to a Flutter app, creating your first module, and accessing dependencies from the widget tree.
+Add Modularity to a Flutter app, create a module, and access dependencies from the widget tree.
 
 ## Installation
-
-Add the core and Flutter packages to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -12,27 +10,15 @@ dependencies:
   modularity_flutter: ^0.2.0
 ```
 
-Both packages pull in `modularity_contracts` automatically.
+`modularity_contracts` is pulled in automatically.
 
-### Workspace setup (monorepo)
+::: tip Dart Workspace
+In a monorepo, list packages under root `pubspec.yaml` with a `workspace:` key. Each member needs `resolution: workspace` in its own pubspec.
+:::
 
-If you use a Dart workspace, list every package directory under the root `pubspec.yaml`:
+## Create a Module
 
-```yaml
-environment:
-  sdk: '>=3.9.0 <4.0.0'
-
-workspace:
-  - packages/core
-  - packages/flutter
-  - packages/my_feature
-```
-
-Each workspace member must declare `resolution: workspace` in its own `pubspec.yaml`.
-
-## Your First Module
-
-A module is a class that extends `Module`. Override `binds()` to register private dependencies and `exports()` to publish dependencies to importers.
+Extend `Module`. Register private dependencies in `binds()` and public ones in `exports()`:
 
 ```dart
 import 'package:modularity_core/modularity_core.dart';
@@ -40,39 +26,41 @@ import 'package:modularity_core/modularity_core.dart';
 class AuthModule extends Module {
   @override
   void binds(Binder i) {
-    // Private — only visible inside this module
     i.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
-    i.registerFactory<LoginUseCase>(() => LoginUseCase(i.get<AuthRepository>()));
+    i.registerFactory<LoginUseCase>(
+      () => LoginUseCase(i.get<AuthRepository>()),
+    );
   }
 
   @override
   void exports(Binder i) {
-    // Public — visible to modules that import AuthModule
-    i.registerLazySingleton<AuthService>(() => AuthService(i.get<AuthRepository>()));
-  }
-
-  @override
-  Future<void> onInit() async {
-    // Runs after binds/exports, after all imports are loaded
+    i.registerLazySingleton<AuthService>(
+      () => AuthService(i.get<AuthRepository>()),
+    );
   }
 }
 ```
 
-### Registration methods
+- `binds()` -- private to this module.
+- `exports()` -- visible to modules that import `AuthModule`.
+
+### Registration Methods
 
 | Method | Behaviour |
 |--------|-----------|
-| `registerLazySingleton<T>(() => ...)` | Created once on first `get<T>()` call |
-| `registerFactory<T>(() => ...)` | New instance on every `get<T>()` call |
-| `registerSingleton<T>(instance)` | Eagerly registered, always returns the same instance |
+| `registerLazySingleton<T>(() => ...)` | Created once on first `get<T>()` |
+| `registerFactory<T>(() => ...)` | New instance every `get<T>()` |
+| `registerSingleton<T>(instance)` | Eager -- same instance always |
 
-## Wiring the App
+## Wire the App
 
-Three widgets connect modules to the Flutter tree:
+Three widgets connect modules to Flutter:
 
-1. **`ModularityRoot`** — top-level `InheritedWidget` that holds the global module registry and `BinderFactory`.
-2. **`ModuleScope`** — manages the lifecycle of a single module.
-3. **`Modularity.observer`** — `RouteObserver` that drives `routeBound` retention.
+| Widget | Role |
+|--------|------|
+| `ModularityRoot` | Top-level `InheritedWidget`. Holds the global registry and `BinderFactory`. |
+| `ModuleScope<T>` | Manages one module's lifecycle. |
+| `Modularity.observer` | `RouteObserver` for `routeBound` retention. |
 
 ```dart
 import 'package:flutter/material.dart';
@@ -84,7 +72,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
-      defaultLoadingBuilder: (_) => const Center(child: CircularProgressIndicator()),
+      defaultLoadingBuilder: (_) =>
+          const Center(child: CircularProgressIndicator()),
       defaultErrorBuilder: (_, error, retry) => Center(
         child: TextButton(onPressed: retry, child: Text('Retry: $error')),
       ),
@@ -100,11 +89,13 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-`ModularityRoot` must sit above any `ModuleScope` in the widget tree. `Modularity.observer` is required for `routeBound` retention to detect route pops.
+::: warning
+`ModularityRoot` must be above any `ModuleScope` in the tree. `Modularity.observer` is required only if you use `routeBound` retention.
+:::
 
-## Accessing Dependencies
+## Access Dependencies
 
-Inside the subtree of a `ModuleScope`, use `ModuleProvider.of(context)` to get the module's `Binder`:
+Use `ModuleProvider.of(context)` inside a `ModuleScope` subtree to get the `Binder`:
 
 ```dart
 class LoginPage extends StatelessWidget {
@@ -122,65 +113,46 @@ class LoginPage extends StatelessWidget {
 }
 ```
 
-### Available lookup methods
+### Lookup Methods
 
-| Method | Returns | Behaviour |
-|--------|---------|-----------|
-| `get<T>()` | `T` | Throws `DependencyNotFoundException` if not found |
-| `tryGet<T>()` | `T?` | Returns `null` if not found |
-| `parent<T>()` | `T` | Searches parent scope only, throws if not found |
-| `tryParent<T>()` | `T?` | Searches parent scope only, returns `null` |
+| Method | Returns | When not found |
+|--------|---------|----------------|
+| `get<T>()` | `T` | Throws `DependencyNotFoundException` |
+| `tryGet<T>()` | `T?` | Returns `null` |
+| `parent<T>()` | `T` | Throws (parent scope only) |
+| `tryParent<T>()` | `T?` | Returns `null` (parent scope only) |
 
-### Resolution order
+### Resolution Order
 
-When you call `get<T>()`, the binder searches in this order:
+`get<T>()` searches: **Local** (private + public) -> **Imports** (public exports) -> **Parent** (nearest ancestor `ModuleScope`).
 
-1. **Local** — private and public registrations of the current module.
-2. **Imports** — public exports of imported modules.
-3. **Parent** — the binder of the nearest parent `ModuleScope` in the widget tree.
+If nothing matches, `DependencyNotFoundException` is thrown with a list of available types.
 
-If the type is not found at any level, a `DependencyNotFoundException` is thrown with the list of available types for debugging.
-
-### Accessing the Module instance
+### Get the Module Instance
 
 ```dart
-final authModule = ModuleProvider.moduleOf<AuthModule>(context);
+final auth = ModuleProvider.moduleOf<AuthModule>(context);
 ```
 
-This returns the concrete `Module` instance managed by the nearest `ModuleScope`.
+## Module Lifecycle
 
-## Lifecycle Hooks
-
-Every module follows a deterministic lifecycle driven by `ModuleController`:
+`ModuleController` drives a deterministic lifecycle:
 
 ```
-initial -> loading -> loaded
-                  \-> error
-loaded -> disposed
+initial --> loading --> loaded --> disposed
+                  \--> error
 ```
 
 ### Hooks
 
-| Hook | When it runs |
-|------|-------------|
-| `binds(Binder i)` | Synchronously, after imports are resolved |
-| `exports(Binder i)` | Synchronously, right after `binds()` |
-| `onInit()` | Async, after binds/exports complete |
-| `onDispose()` | When the module controller is disposed |
+| Hook | Timing |
+|------|--------|
+| `binds(Binder i)` | Sync, after imports resolved |
+| `exports(Binder i)` | Sync, right after `binds()` |
+| `onInit()` | Async, after binds/exports |
+| `onDispose()` | On controller disposal |
 
-### ModuleStatus stream
-
-`ModuleController` exposes a broadcast `Stream<ModuleStatus>` with values:
-
-- `ModuleStatus.initial` — just created
-- `ModuleStatus.loading` — `onInit()` is running
-- `ModuleStatus.loaded` — ready to use
-- `ModuleStatus.error` — `onInit()` threw
-- `ModuleStatus.disposed` — cleaned up
-
-### Loading and error builders
-
-`ModuleScope` renders different widgets depending on the current status:
+### Loading and Error UI
 
 ```dart
 ModuleScope<PaymentModule>(
@@ -194,8 +166,6 @@ ModuleScope<PaymentModule>(
 )
 ```
 
-If no builders are provided, `ModuleScope` falls back to the defaults registered on `ModularityRoot`. If none exist there either, a plain `Text('Loading...')` or error column is shown.
+Fallback order: per-scope builder -> `ModularityRoot` defaults -> built-in placeholder.
 
-### Retry on error
-
-The `retry` callback passed to `errorBuilder` disposes the failed controller and creates a fresh one, re-running the full initialization cycle.
+The `retry` callback disposes the failed controller and re-runs the full initialization cycle.

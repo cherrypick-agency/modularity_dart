@@ -1,105 +1,84 @@
-# Hot Reload Guide for Modularity
+# Hot Reload
 
-## Why extended hot reload matters
+Modularity preserves singleton state during Flutter hot reload. Factories and lazy singletons get updated, but already-created instances survive.
 
-Previously, re-running `binds()` would wipe already-created singletons and often throw duplicate-export errors. With the new implementation, hot reload:
+## What happens on hot reload
 
-- preserves all created singleton and `registerSingleton` instances;
-- updates only factories (`registerFactory`, `registerLazySingleton`);
-- re-applies `ModuleOverrideScope` and the user-defined `module.hotReload` hook.
+- Existing singleton and `registerSingleton` instances are preserved.
+- `registerFactory` and `registerLazySingleton` delegates are replaced.
+- `ModuleOverrideScope` overrides and the `module.hotReload()` hook are re-applied automatically.
 
-This approach **eliminates the need to recreate controllers** and makes code updates predictable even for complex module graphs.
+No need to recreate controllers or restart the app.
 
-## RegistrationStrategy and RegistrationAwareBinder
+## RegistrationStrategy
 
-`modularity_contracts` introduces the `RegistrationStrategy` enum and the `RegistrationAwareBinder` interface. Strategies are used exclusively during hot reload and test overrides:
+`modularity_contracts` defines `RegistrationStrategy` and `RegistrationAwareBinder`:
 
 | Strategy | Behaviour |
 |----------|-----------|
-| `replace` | re-registration overwrites the existing entry (legacy behaviour) |
-| `preserveExisting` | singletons are kept; only the factory delegate is updated |
+| `replace` | Re-registration overwrites the existing entry (default) |
+| `preserveExisting` | Singletons are kept; only the factory delegate is updated |
 
-`SimpleBinder` and `GetItBinder` already implement this contract, so end-users simply call `controller.hotReload()`. If you build a custom binder, implement the interface and respect the current strategy in your `register*` methods.
+`SimpleBinder` and `GetItBinder` both implement `RegistrationAwareBinder`. `ModuleController.hotReload()` automatically wraps rebinds in `runWithStrategy(RegistrationStrategy.preserveExisting, ...)`, so manual strategy switching is not needed in normal usage.
 
-Example implementation fragment:
+::: tip
+If you implement a custom binder, implement `RegistrationAwareBinder` and respect `registrationStrategy` in your `register*` methods.
+:::
+
+## How hotReload() works
+
+`ModuleController.hotReload()` executes the following steps:
+
+1. Checks the module is in `loaded` status (no-op otherwise).
+2. For `ExportableBinder`: calls `resetPublicScope()` to allow re-registration.
+3. Switches binder to `preserveExisting` strategy.
+4. Runs in order:
+   - `module.binds(binder)`
+   - override re-application (if `ModuleOverrideScope` was provided)
+   - `module.exports(binder)`
+   - `sealPublicScope()`
+5. Invokes `module.hotReload(binder)` -- your custom hook.
+
+### The hotReload hook
+
+Override `hotReload()` in your module to run custom logic after rebinding:
 
 ```dart
-class MyBinder implements RegistrationAwareBinder {
-  final _stack = <RegistrationStrategy>[RegistrationStrategy.replace];
-
+class AuthModule extends Module {
   @override
-  RegistrationStrategy get registrationStrategy => _stack.last;
-
-  @override
-  T runWithStrategy<T>(RegistrationStrategy strategy, T Function() body) {
-    _stack.add(strategy);
-    try {
-      return body();
-    } finally {
-      _stack.removeLast();
-    }
+  void binds(Binder i) {
+    i.registerLazySingleton<AuthRepo>(() => AuthRepoImpl());
   }
 
   @override
-  void registerLazySingleton<T extends Object>(T Function() factory) {
-    if (registrationStrategy == RegistrationStrategy.preserveExisting &&
-        _hasSingleton<T>()) {
-      _updateFactory(factory);
-      return;
-    }
-    _storeSingleton(factory);
+  void hotReload(Binder i) {
+    // Runs after binds/exports have been refreshed.
+    // Use for cache invalidation, re-subscription, etc.
   }
 }
 ```
 
-`ModuleController` automatically wraps rebinds in `runWithStrategy(RegistrationStrategy.preserveExisting, ...)` during hot reload, so you never need to switch strategy manually in normal usage.
+## Overrides and hot reload
 
-## ModuleOverrideScope and re-applying overrides
-
-`ModuleOverrideScope` describes an override tree: the current module (`selfOverrides`) plus a `children` map for imported modules. Example:
+`ModuleOverrideScope` describes an override tree: `selfOverrides` for the current module, `children` for imported modules.
 
 ```dart
 final overrides = ModuleOverrideScope(children: {
   AuthModule: ModuleOverrideScope(
     selfOverrides: (binder) =>
-        binder.singleton<AuthApi>(() => FakeAuthApi()),
+        binder.registerLazySingleton<AuthApi>(() => FakeAuthApi()),
   ),
 });
 ```
 
-- In Flutter: `ModuleScope(overrideScope: overrides, ...)`.
-- In tests: `testModule(MyModule(), body, overrideScope: overrides);`
+- Flutter: `ModuleScope(overrideScope: overrides, ...)`
+- Tests: `testModule(MyModule(), body, overrideScope: overrides)`
 
-Overrides run after `binds` but before `exports`, and are automatically re-applied on `hotReload()` without extra code.
+Overrides run after `binds()` but before `exports()`, and are automatically re-applied on every `hotReload()` call.
 
-## Hot reload step by step
+## Manual strategy switching
 
-1. `ModuleController.hotReload()` checks the module is in `loaded` status.
-2. For exportable binders, `resetPublicScope()` is called so that public dependencies can be re-registered.
-3. The binder switches to the `preserveExisting` strategy.
-4. The following methods are executed in order:
-   - `module.binds(binder);`
-   - `_applyOverridesIfNeeded();` (current scope node)
-   - `module.exports(binder);`
-   - `sealPublicScope();`
-5. Finally, `module.hotReload(binder);` — the user hook — is invoked.
-
-## Testing
-
-- `dart test` in `packages/core` verifies singleton preservation and factory refresh (`HotReloadModule` tests).
-- `packages/adapters/modularity_get_it` contains tests confirming the GetIt adapter behaviour.
-- In a running app, you can call `controller.hotReload()` directly, or rely on Flutter hot reload — Modularity automatically triggers `ModuleScope` rebuilds when code changes.
-
-## FAQ
-
-**Do I need to manually reset singletons?**  
-No. If you want to restart a module from scratch, call `controller.dispose()` and create a new `ModuleController`.
-
-**Why does re-registering a public binding still throw an error?**  
-The public scope is protected by `sealPublicScope`. Before hot reload, `resetPublicScope()` is called, so there is no error inside `ModuleController.hotReload()`. If you try to manually re-export outside of that context, the guard remains intentional.
-
-**Can I apply `RegistrationStrategy.preserveExisting` to a subset of code?**  
-Yes. Any `RegistrationAwareBinder` exposes `runWithStrategy`. For example, to update several factories without losing state:
+Any `RegistrationAwareBinder` exposes `runWithStrategy` for targeted factory updates:
 
 ```dart
 final binder = ModuleProvider.of(context) as RegistrationAwareBinder;
@@ -112,4 +91,17 @@ binder.runWithStrategy(
 );
 ```
 
-Use this with care and only when you explicitly need rebind behaviour that preserves existing instances.
+::: warning
+Use manual strategy switching only when you explicitly need rebind behaviour that preserves existing instances outside of the normal hot reload flow.
+:::
+
+## FAQ
+
+**Do I need to manually reset singletons?**
+No. To restart a module from scratch, call `controller.dispose()` and create a new `ModuleController`.
+
+**Why does re-registering a public binding throw an error?**
+The public scope is protected by `sealPublicScope()`. During `hotReload()`, `resetPublicScope()` is called first, so re-registration works. Manual re-export outside that context is intentionally blocked.
+
+**How do I test hot reload behaviour?**
+`dart test packages/core/test/` includes `HotReloadModule` tests that verify singleton preservation and factory refresh. For GetIt-specific behaviour, see `packages/adapters/modularity_get_it/test/`.

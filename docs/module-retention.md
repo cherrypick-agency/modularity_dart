@@ -1,94 +1,98 @@
-# Module Retention Policies
+# Module Retention
 
-This document explains how `ModuleScope` manages the lifetime of modules—when they stay alive and when they are disposed.
+Control how long a `ModuleController` lives relative to the widget tree and navigation stack.
 
-## Overview
+## Retention Policies
 
-Every `ModuleScope` can be configured with a `ModuleRetentionPolicy`. The policy determines **when the underlying `ModuleController` is disposed**:
+Every `ModuleScope` accepts a `retentionPolicy` parameter. Three policies are available:
 
-| Policy | Behaviour |
-|--------|-----------|
-| `routeBound` (default) | Dispose when the owning route is popped from the navigator stack |
-| `keepAlive` | Cache the controller; it survives widget unmounts and can be reused |
-| `strict` | Dispose immediately when `ModuleScope` leaves the widget tree |
-
-## Quick usage
+| Policy | Disposed when | Caches across unmounts |
+|--------|--------------|----------------------|
+| `routeBound` (default) | Route is popped or removed | No |
+| `keepAlive` | All references released **or** route terminates | Yes |
+| `strict` | `ModuleScope` leaves the widget tree | No |
 
 ```dart
 ModuleScope(
   module: ProfileModule(),
   retentionPolicy: ModuleRetentionPolicy.keepAlive,
-  retentionKey: 'profile-${user.id}', // optional explicit key
+  retentionKey: 'profile-${user.id}',
   child: ProfileView(),
 )
 ```
 
-If you omit `retentionPolicy`, the default is `routeBound`.
-
----
-
-## Policy details
-
-### routeBound
+## routeBound
 
 ```dart
 ModuleRetentionPolicy.routeBound
 ```
 
-The module stays alive while the route is on the navigator stack. When the route is **popped** (user presses back, `Navigator.pop`, etc.), the module is disposed.
+The controller lives as long as the enclosing `ModalRoute` remains on the navigator stack. Disposal happens on `didPop` or `didRemove`.
 
-- Uses Flutter's `RouteObserver` under the hood.
-- Suitable for feature screens tied to navigation (e.g., order details, checkout).
-- If the same widget unmounts but the route remains on the stack, the module is **not** disposed.
+Internally, `RouteBoundRetentionStrategy` mixes in `RouteAware` and subscribes to `Modularity.observer`. This means the global `RouteObserver` **must** be registered in your `MaterialApp`:
 
-### keepAlive
+```dart
+MaterialApp(
+  navigatorObservers: [Modularity.observer],
+  // ...
+)
+```
+
+Key behaviors:
+
+- Widget unmount without route pop does **not** dispose the controller.
+- Each mount creates a fresh controller; no caching between mounts.
+- If there is no enclosing `ModalRoute` (e.g. the module is inside a dialog without its own route), the strategy silently skips route subscription.
+
+Best for: feature screens tied to navigation (order details, checkout, profile pages).
+
+## keepAlive
 
 ```dart
 ModuleRetentionPolicy.keepAlive
 ```
 
-The controller is registered in a global `ModuleRetainer` and survives across widget unmounts. When the same `ModuleScope` (identified by `retentionKey`) is mounted again, it **reuses** the existing controller instead of creating a new one.
-
-Use cases:
-- Tabs that should preserve state when switching.
-- Cached data modules (e.g., user profile, shopping cart).
-- Long-lived background services.
+The controller is registered in the global `ModuleRetainer` (held by `ModularityRoot`). When the `ModuleScope` unmounts, the controller stays in the cache. When a new `ModuleScope` mounts with the same retention key, it reuses the cached controller instead of creating one.
 
 The controller is disposed when:
-1. All scopes that acquired the same key have been disposed **and** `release` was called (reference count drops to zero).
-2. You explicitly call `ModuleRetainer.evict(key)`.
 
-### strict
+1. **Reference count drops to zero** -- every mount increments the ref count, every unmount decrements it. When `release()` finds zero references, the controller is disposed.
+2. **Route terminates** -- even `keepAlive` controllers track their enclosing route. When the route pops, the controller is evicted automatically.
+3. **Explicit eviction** -- call `ModuleRetainer.evict(key)` to force removal regardless of ref count.
+
+Best for: tabs that preserve state, cached data modules (user profile, shopping cart), long-lived background services.
+
+## strict
 
 ```dart
 ModuleRetentionPolicy.strict
 ```
 
-Dispose as soon as the `ModuleScope` widget leaves the tree—no caching, no route observation. This is the simplest model: one widget instance = one controller lifetime.
+Dispose the controller the moment `ModuleScope` leaves the widget tree. No caching, no route observation. One widget instance = one controller lifetime.
 
-Use cases:
-- Ephemeral dialogs or bottom sheets.
-- Widgets that must not share state across rebuilds.
+Best for: ephemeral dialogs, bottom sheets, widgets that must not share state across rebuilds.
 
----
+## Retention Keys
 
-## Retention keys
+A retention key uniquely identifies a cached controller within `ModuleRetainer`. Two `ModuleScope` widgets with the same key and `keepAlive` policy share the same controller.
 
-A **retention key** uniquely identifies a cached controller. If two `ModuleScope` widgets share the same key and policy `keepAlive`, they share the controller.
+### Automatic Derivation
 
-### Automatic key derivation
+When `retentionKey` is not provided, the framework computes one from:
 
-If you don't supply `retentionKey`, Modularity derives one from:
+| Input | Source |
+|-------|--------|
+| Module type | `module.runtimeType` |
+| Route name | `ModalRoute.of(context).settings.name` |
+| Arguments hash | Stable hash of `args` passed to `ModuleScope` |
+| Parent key | Inherited from the nearest ancestor `ModuleScope` via `_RetentionKeyScope` |
+| Extras | `retentionExtras` map on `ModuleScope` |
 
-1. `module.runtimeType`
-2. Current route name/path (`ModalRoute.of(context).settings.name`)
-3. Hash of `args` passed to the module
-4. Parent scope key (for nested modules)
-5. Optional `retentionExtras` map
+All inputs are combined via `Object.hashAll`. This is sufficient when each route has at most one instance of a given module type.
 
-This is usually enough for pages tied to a route. For dynamic scenarios (e.g., multiple instances of the same module type on one page), provide an explicit key.
+### Explicit Key
 
-### Explicit key
+For dynamic scenarios (e.g. multiple chat rooms on one screen), provide an explicit key:
 
 ```dart
 ModuleScope(
@@ -99,9 +103,9 @@ ModuleScope(
 )
 ```
 
-### Custom key via `RetentionIdentityProvider`
+### Custom Key via RetentionIdentityProvider
 
-A module can implement the `RetentionIdentityProvider` mixin to compute its own key:
+A module can compute its own key by mixing in `RetentionIdentityProvider`:
 
 ```dart
 class ChatModule extends Module with RetentionIdentityProvider {
@@ -118,71 +122,76 @@ class ChatModule extends Module with RetentionIdentityProvider {
 }
 ```
 
-If `buildRetentionIdentity` returns `null`, the default derivation is used.
+Returning `null` falls back to the default derivation.
 
----
+> **Retention Key vs Override Scope**
+>
+> `retentionKey` and `overrideScope` are independent. Two scopes with the same key but different override scopes **share** the cached controller -- the first scope's overrides win. If you need override-aware caching, include the scope identity in the key:
+>
+> ```dart
+> ModuleScope(
+>   module: MyModule(),
+>   retentionPolicy: ModuleRetentionPolicy.keepAlive,
+>   retentionKey: 'my-module-${identityHashCode(overrideScope)}',
+>   overrideScope: overrideScope,
+>   child: ...,
+> )
+> ```
 
 ## ModuleRetainer API
 
-`ModuleRetainer` is stored in `ModularityRoot` and manages the cache for `keepAlive` modules.
+`ModuleRetainer` is stored in `ModularityRoot` and manages the `keepAlive` cache. Access it via `ModularityRoot.retainerOf(context)`.
 
 | Method | Description |
 |--------|-------------|
-| `acquire(key)` | Increment ref count and return the controller (or `null` if not registered) |
-| `register(key, controller)` | Store a new controller with ref count = 1 |
-| `release(key)` | Decrement ref count; optionally dispose if orphaned |
-| `evict(key)` | Remove and dispose the controller unconditionally |
-| `peek(key)` | Return controller without changing ref count |
-| `debugSnapshot()` | Get a list of all entries for diagnostics |
+| `contains(key)` | Check if a controller is cached under `key` |
+| `acquire(key)` | Increment ref count and return the controller, or `null` |
+| `register(key, controller, ...)` | Store a new controller with initial ref count |
+| `release(key, {disposeIfOrphaned})` | Decrement ref count; dispose if orphaned and flag is set |
+| `evict(key, {disposeController})` | Remove and optionally dispose the controller unconditionally |
+| `peek(key)` | Return the controller without changing ref count |
+| `debugSnapshot()` | List all entries as `ModuleRetainerEntrySnapshot` |
 
-Typically you don't call these directly—`ModuleScope` handles them via its strategy.
-
----
-
-## Strategies under the hood
-
-Each policy maps to an internal `ModuleRetentionStrategy`:
-
-| Policy | Strategy class |
-|--------|---------------|
-| `routeBound` | `RouteBoundRetentionStrategy` |
-| `keepAlive` | `KeepAliveRetentionStrategy` |
-| `strict` | `StrictRetentionStrategy` |
-
-Strategies implement:
-- `reuseExisting()` – try to acquire a cached controller.
-- `onControllerCreated(controller)` – register with retainer if needed.
-- `onStateDispose()` – handle widget unmount.
-- `disposeNow()` – force-dispose (e.g., route pop).
-- `onRetry()` – handle error retry flow.
-- `didChangeDependencies()` – subscribe to route observer, etc.
-
----
+You typically do not call these directly -- `ModuleScope` manages them through retention strategies.
 
 ## Debugging
 
-Use `ModuleRetainer.debugSnapshot()` to inspect cached modules:
+Inspect cached modules at runtime:
 
 ```dart
 final retainer = ModularityRoot.retainerOf(context);
 for (final entry in retainer.debugSnapshot()) {
-  print('${entry.moduleType} key=${entry.key} refs=${entry.refCount}');
+  debugPrint(
+    '${entry.moduleType} key=${entry.key} '
+    'refs=${entry.refCount} policy=${entry.policy.name}',
+  );
 }
 ```
 
----
+Enable lifecycle logging to trace retention events in the console:
+
+```dart
+Modularity.enableDebugLogging();
+// Output:
+// [Modularity] CREATED ProfileModule key=12345678
+// [Modularity] REGISTERED ProfileModule key=12345678 {policy: keepAlive, refCount: 1}
+// [Modularity] REUSED ProfileModule key=12345678 {refCount: 2}
+// [Modularity] RELEASED ProfileModule key=12345678 {refCount: 1}
+```
+
+## Runtime Constraints
+
+- **retentionPolicy cannot change** at runtime. An assertion fires in debug mode if you rebuild a `ModuleScope` with a different policy. Create a new widget instance instead.
+- **retentionKey cannot change** at runtime. Same assertion behavior.
+- **Nested key scoping** is automatic. Child modules receive the parent's key through `_RetentionKeyScope`, so derived keys include the parent namespace.
 
 ## FAQ
 
 **When should I use `keepAlive` vs `routeBound`?**
-Use `keepAlive` when the same module instance must survive tab switches or widget rebuilds. Use `routeBound` when the module's lifetime should follow navigation.
+Use `keepAlive` when the module must survive tab switches or widget rebuilds within the same navigation context. Use `routeBound` when the module's lifetime should match navigation (push = create, pop = dispose).
 
 **Can I force-dispose a `keepAlive` module?**
-Yes. Call `ModuleRetainer.evict(key)` or navigate away so that all scopes release their references.
+Yes. Call `ModuleRetainer.evict(key)`. Alternatively, navigate away so that all scopes release their references and the route terminates.
 
-**What happens if I change `retentionPolicy` at runtime?**
-An assertion will fire in debug mode. Policies cannot be changed on an existing `ModuleScope`; rebuild with a new key/widget instead.
-
-**How do nested modules derive their key?**
-Child modules receive the parent's key via `_RetentionKeyScope`, so their derived keys include the parent namespace automatically.
-
+**What happens to `keepAlive` controllers when their route pops?**
+They are automatically evicted. The retainer attaches a `route.popped` listener that triggers cleanup, even though the controller would otherwise survive unmounts.

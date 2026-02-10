@@ -1,66 +1,21 @@
-# Injectable Integration Guide
+# Injectable Integration
 
-Modularity modules use `binds()` and `exports()` to register dependencies manually. The `modularity_injectable` package replaces that manual wiring with [injectable](https://pub.dev/packages/injectable) code generation while preserving strict module boundaries.
+The `modularity_injectable` package replaces manual `binds()`/`exports()` wiring with [injectable](https://pub.dev/packages/injectable) code generation while preserving module boundaries.
 
-## When to Use This
+## When to Use
 
-**Manual registration** (default approach):
+| Approach | Best for |
+|----------|----------|
+| Manual `binds()`/`exports()` | Small modules (< 5 registrations), no build_runner needed |
+| `modularity_injectable` | 10+ dependencies, constructor auto-injection, teams already using injectable/get_it |
 
-```dart
-class AuthModule extends Module {
-  @override
-  void binds(Binder i) {
-    i.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
-    i.registerFactory<LoginUseCase>(() => LoginUseCase(i.get()));
-  }
-
-  @override
-  void exports(Binder i) {
-    i.registerLazySingleton<AuthService>(() => AuthService(i.get()));
-  }
-}
-```
-
-This works well for small modules with a handful of dependencies. You see every registration, and there is no code generation step.
-
-**Injectable auto-wiring** (`modularity_injectable`):
-
-```dart
-@LazySingleton(as: AuthRepository)
-class AuthRepositoryImpl implements AuthRepository { ... }
-
-@Injectable()
-class LoginUseCase {
-  LoginUseCase(this._repo);
-  final AuthRepository _repo;
-}
-
-@LazySingleton(env: [modularityExportEnvName])
-class AuthService {
-  AuthService(this._repo);
-  final AuthRepository _repo;
-}
-```
-
-Use this when:
-
-- A module has 10+ dependencies and manual wiring becomes tedious.
-- You want constructor injection resolved automatically.
-- Your team already uses `injectable` / `get_it` in other projects.
-
-Avoid this when:
-
-- The module is small (< 5 registrations). Manual wiring is simpler.
-- You do not want a `build_runner` step in your workflow.
-
-Both approaches can coexist in the same app. Some modules can use manual registration while others use injectable.
+Both approaches coexist in the same app.
 
 ## Setup
 
 ### 1. Add dependencies
 
 ```yaml
-# pubspec.yaml
 dependencies:
   modularity_core: ^0.2.0
   modularity_injectable: ^0.2.0
@@ -72,11 +27,11 @@ dev_dependencies:
   injectable_generator: ^2.4.0
 ```
 
-### 2. Switch the binder factory
+### 2. Configure the binder factory
 
-Modularity needs `GetItBinder` (the dual-scope variant from `modularity_injectable`) to work with injectable. Tell the root widget to produce them:
+Injectable requires `GetItBinder` (dual-scope variant from `modularity_injectable`).
 
-**Flutter app:**
+**Flutter:**
 
 ```dart
 import 'package:modularity_flutter/modularity_flutter.dart';
@@ -89,7 +44,7 @@ ModularityRoot(
 );
 ```
 
-**Pure Dart (no Flutter):**
+**Pure Dart:**
 
 ```dart
 import 'package:modularity_injectable/modularity_injectable.dart';
@@ -102,16 +57,14 @@ final controller = ModuleController(
 await controller.initialize({});
 ```
 
-`GetItBinderFactory` is the `BinderFactory` that creates `GetItBinder` instances. Each `GetItBinder` manages two isolated GetIt containers — one for private dependencies and one for public exports.
-
 ## Annotating Dependencies
 
-### Private dependencies (internal to the module)
+### Private (module-internal)
 
-Use standard `injectable` annotations. Dependencies without the export environment marker stay private to the module:
+Standard injectable annotations. No export marker means the dependency stays private:
 
 ```dart
-@LazySingleton()
+@LazySingleton(as: AuthRepository)
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._apiClient);
   final ApiClient _apiClient;
@@ -124,23 +77,19 @@ class LoginUseCase {
 }
 ```
 
-### Exported dependencies (visible to importing modules)
+### Exported (visible to importing modules)
 
-Mark them with the `modularity_export` environment so that `ModularityExportOnly` can filter them during the `exports()` phase. Two equivalent syntaxes:
-
-**Option A — `env` parameter on the registration annotation:**
+Add the `modularity_export` environment. Two equivalent syntaxes:
 
 ```dart
+// Option A: env parameter
 @LazySingleton(env: [modularityExportEnvName])
 class AuthService {
   AuthService(this._repo);
   final AuthRepository _repo;
 }
-```
 
-**Option B — `@modularityExportEnv` as a separate annotation:**
-
-```dart
+// Option B: separate annotation
 @modularityExportEnv
 @LazySingleton()
 class AuthFacade {
@@ -149,34 +98,11 @@ class AuthFacade {
 }
 ```
 
-Both produce the same result. The constant `modularityExportEnvName` equals `'modularity_export'`, and `modularityExportEnv` is `const Environment('modularity_export')`.
-
-### Registering against an interface
-
-Use the `as` parameter to register an implementation under its abstract type:
-
-```dart
-@LazySingleton(as: AuthRepository)
-class AuthRepositoryImpl implements AuthRepository { ... }
-```
-
-### Named registrations
-
-`@Named` works as usual. Named registrations resolve through GetIt directly (Modularity's Binder does not participate in named lookups):
-
-```dart
-@Named('baseUrl')
-@Injectable()
-class ApiBaseUrl {
-  final String value = 'https://api.example.com';
-}
-```
+`modularityExportEnvName` is the string `'modularity_export'`. `modularityExportEnv` is `const Environment('modularity_export')`.
 
 ## Wiring the Module
 
 ### 1. Create the injectable config file
-
-Each module gets its own `@InjectableInit` file. The generator will create a `$initGetIt` function in the corresponding `.config.dart` file.
 
 ```dart
 // lib/modules/auth/auth_injectable.dart
@@ -204,7 +130,7 @@ Run code generation:
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-### 2. Wire into the Module class
+### 2. Wire into the Module
 
 ```dart
 import 'package:modularity_core/modularity_core.dart';
@@ -228,23 +154,16 @@ class AuthModule extends Module {
 }
 ```
 
-`configureInternal` registers **all** annotated dependencies into the private scope.
-`configureExports` registers **only** dependencies tagged with `env: [modularityExportEnvName]` (or `@modularityExportEnv`) into the public scope.
-
-Both calls receive the same generated function. The difference is that `configureExports` passes a `ModularityExportOnly` environment filter that rejects anything without the export marker.
+- `configureInternal` registers **all** annotated dependencies into the private scope.
+- `configureExports` registers **only** dependencies tagged with `modularity_export` into the public scope via a `ModularityExportOnly` environment filter.
 
 ### Mixing manual and generated registrations
-
-You can combine both approaches in a single module:
 
 ```dart
 class AuthModule extends Module {
   @override
   void binds(Binder i) {
-    // Auto-wired dependencies
     ModularityInjectableBridge.configureInternal(i, initAuthDeps);
-
-    // Manual registration for things that don't fit injectable
     i.registerSingleton<AuthConfig>(AuthConfig.fromEnv());
   }
 
@@ -255,114 +174,52 @@ class AuthModule extends Module {
 }
 ```
 
-## How It Works Under the Hood
+## How It Works
 
 ### Dual-scope GetItBinder
 
-Each `GetItBinder` (from `modularity_injectable`) creates two isolated GetIt containers:
+Each `GetItBinder` manages two isolated GetIt containers:
 
-```
-GetItBinder
-├── _privateScope: GetIt.asNewInstance()   // binds() registrations
-├── _publicScope:  GetIt.asNewInstance()   // exports() registrations
-├── _imports: List<Binder>                // imported module binders
-└── _parent: Binder?                      // parent scope binder
-```
+- **Private scope** (`internalContainer`) -- receives `binds()` registrations
+- **Public scope** (`publicContainer`) -- receives `exports()` registrations
 
-When `isExportMode` is `false` (during `binds()`), all registrations go to `_privateScope`. When `isExportMode` is `true` (during `exports()`), they go to `_publicScope`.
+Dependency resolution order:
 
-Dependency resolution follows a strict priority:
+1. Local private scope
+2. Local public scope
+3. Imports (public exports from imported modules)
+4. Parent module's binder
 
-1. **Local private scope** (`_privateScope`)
-2. **Local public scope** (`_publicScope`)
-3. **Imports** — only public exports from imported modules (`tryGetPublic`)
-4. **Parent** — the parent module's binder
+### BinderGetIt -- the GetIt proxy
 
-This is the same resolution chain that manual Modularity uses, ensuring consistent behavior.
+Injectable-generated code calls `getIt.get<T>()` for constructor parameters. `BinderGetIt` wraps a GetIt instance and intercepts `get<T>()`:
 
-### BinderGetIt — the GetIt proxy
+1. Named/parameterized lookups delegate directly to GetIt
+2. If `T` is registered locally, return it
+3. Otherwise, fall back to `Binder.tryGet<T>()` (walks imports + parent)
+4. If still unresolved, throw native GetIt error
 
-Injectable-generated code calls `getIt.get<T>()` to resolve constructor parameters. A raw GetIt instance cannot see dependencies from imported modules or the parent scope. `BinderGetIt` bridges this gap.
-
-`BinderGetIt` implements the `GetIt` interface but intercepts `get<T>()` calls:
-
-```
-getIt.get<T>()
-  │
-  ├── Has instanceName / param1 / param2?
-  │   └── Yes → delegate directly to the underlying GetIt (injectable-specific features)
-  │
-  ├── Is T registered in the primary GetIt container?
-  │   └── Yes → return it
-  │
-  ├── Can Binder.tryGet<T>() resolve it?
-  │   └── Yes → return it (this walks imports + parent)
-  │
-  └── Fall through to primary GetIt → throws native GetIt error
-```
-
-This means injectable factories can depend on types registered in imported modules or the parent scope without any manual `i.get()` calls:
+This lets injectable factories depend on types from imported modules automatically:
 
 ```dart
-// ApiClient is exported by NetworkModule (an import)
-// injectable resolves it automatically through BinderGetIt
-
+// ApiClient is exported by NetworkModule (an import).
+// Injectable resolves it through BinderGetIt -- no manual i.get() needed.
 @LazySingleton()
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._apiClient); // resolved via imports
+  AuthRepositoryImpl(this._apiClient);
   final ApiClient _apiClient;
 }
 ```
 
-### ModularityExportOnly — the environment filter
-
-`ModularityExportOnly` extends injectable's `EnvironmentFilter`. It accepts registrations only when their environment set contains `'modularity_export'`:
-
-```dart
-class ModularityExportOnly extends EnvironmentFilter {
-  const ModularityExportOnly() : super(const {'modularity_export'});
-
-  @override
-  bool canRegister(Set<String> depEnvironments) {
-    if (depEnvironments.isEmpty) return false;
-    return depEnvironments.contains(modularityExportEnvName);
-  }
-}
-```
-
-When `ModularityInjectableBridge.configureExports` calls the generated init function, it passes this filter. The generated code checks `environmentFilter.canRegister(...)` for each registration and skips anything that does not carry the export marker.
-
-### The complete flow
-
-```
-Module.binds(binder) called by ModuleController
-  │
-  └── ModularityInjectableBridge.configureInternal(binder, initFn)
-        │
-        ├── Wraps binder.internalContainer in BinderGetIt
-        └── Calls initFn(binderGetIt)
-              └── Generated code registers ALL deps into private GetIt
-                  (BinderGetIt falls back to Binder for cross-module deps)
-
-Module.exports(binder) called by ModuleController
-  │
-  └── ModularityInjectableBridge.configureExports(binder, initFn)
-        │
-        ├── Wraps binder.publicContainer in BinderGetIt
-        └── Calls initFn(binderGetIt, environmentFilter: ModularityExportOnly())
-              └── Generated code registers ONLY @modularityExportEnv deps
-                  into the public GetIt scope
-```
-
-After both phases complete, the public scope is sealed. Importing modules see only the public exports, and private implementation details remain hidden.
-
 ### Error handling
 
-If you pass a non-GetIt binder (e.g. the default `SimpleBinder`) to the bridge, it throws `ModuleConfigurationException` immediately:
+Passing a non-GetIt binder (e.g. `SimpleBinder`) to the bridge throws `ModuleConfigurationException` immediately:
 
 ```
 ModuleConfigurationException: Injectable integration requires GetItBinder.
 Provide GetItBinderFactory to ModularityRoot or ModuleController.
 ```
 
-This fail-fast behavior prevents confusing runtime errors from mismatched binder types.
+::: warning
+Make sure to set `GetItBinderFactory` on `ModularityRoot` or `ModuleController` before using injectable integration. The bridge validates the binder type at call time.
+:::
