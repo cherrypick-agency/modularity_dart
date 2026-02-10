@@ -1,4 +1,4 @@
-# Module Retention
+# 🧲 Module Retention
 
 Control how long a `ModuleController` lives relative to the widget tree and navigation stack.
 

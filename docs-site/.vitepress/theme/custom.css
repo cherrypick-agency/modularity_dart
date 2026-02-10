@@ -161,6 +161,13 @@
   --codeblocks-margin-bottom: 44px;
 }
 
+/* Mermaid diagrams — limit height */
+
+.mermaid svg {
+  max-height: 400px;
+  width: auto;
+}
+
 /* API auto-linker — inline code that links to API docs */
 
 a.api-link {

@@ -1,4 +1,4 @@
-# Module Architecture
+# 🏗️ Module Architecture
 
 Visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and `submodules` vs `imports`.
 

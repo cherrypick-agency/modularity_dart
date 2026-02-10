@@ -1,4 +1,4 @@
-# Hot Reload
+# 🔥 Hot Reload
 
 Modularity preserves singleton state during Flutter hot reload. Factories and lazy singletons get updated, but already-created instances survive.
 

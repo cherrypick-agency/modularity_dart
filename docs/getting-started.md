@@ -1,4 +1,4 @@
-# Getting Started
+# 🚀 Getting Started
 
 Add Modularity to a Flutter app, create a module, and access dependencies from the widget tree.
 

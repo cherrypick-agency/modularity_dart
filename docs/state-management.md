@@ -1,4 +1,4 @@
-# State Management Integration
+# 🎛️ State Management Integration
 
 Modularity handles **DI and lifecycle**. State management libraries handle **reactivity**. They compose cleanly: register reactive objects in `binds()`, resolve them via `ModuleProvider.of(context)`, and feed them to whichever state management solution your app uses.
 

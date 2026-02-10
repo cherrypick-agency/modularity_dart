@@ -1,4 +1,4 @@
-# Testing Modules
+# 🧪 Testing Modules
 
 Test Modularity modules with `modularity_test` for unit tests and `ModuleScope` for widget tests.
 

@@ -1,4 +1,4 @@
-# Dependency Overrides
+# 🔀 Dependency Overrides
 
 Replace, extend, or intercept dependency registrations at any level of the module graph.
 

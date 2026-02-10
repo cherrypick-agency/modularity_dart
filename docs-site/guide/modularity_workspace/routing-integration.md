@@ -1,4 +1,4 @@
-# Routing Integration
+# 🧭 Routing Integration
 
 Wrap each route in a `ModuleScope` so modules follow navigation lifecycle automatically. Modularity is router-agnostic -- the same pattern works with GoRouter, AutoRoute, or Navigator 1.0.
 

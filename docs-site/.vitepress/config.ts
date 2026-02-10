@@ -25,6 +25,7 @@ export default withMermaid(defineConfig({
     },
     nav: [
       { text: 'Guide', link: '/guide/' },
+      { text: 'Comparison', link: '/comparison/' },
       { text: 'API Reference', link: '/api/' },
     ],
     sidebar: {

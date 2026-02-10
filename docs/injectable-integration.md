@@ -1,4 +1,4 @@
-# Injectable Integration
+# 💉 Injectable Integration
 
 The `modularity_injectable` package replaces manual `binds()`/`exports()` wiring with [injectable](https://pub.dev/packages/injectable) code generation while preserving module boundaries.
 
