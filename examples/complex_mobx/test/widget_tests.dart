@@ -28,7 +28,7 @@ void main() {
             home: ModuleScope(
               module: AuthModule(),
               overrides: (binder) {
-                binder.singleton<AuthStore>(() => authStore);
+                binder.registerLazySingleton<AuthStore>(() => authStore);
               },
               child: const SingleChildScrollView(child: LoginPage()),
             ),
@@ -51,7 +51,7 @@ void main() {
             home: ModuleScope(
               module: CartModule(),
               overrides: (binder) {
-                binder.singleton<CartStore>(() => cartStore);
+                binder.registerLazySingleton<CartStore>(() => cartStore);
               },
               child: const CartPage(),
             ),

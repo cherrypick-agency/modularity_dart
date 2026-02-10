@@ -7,7 +7,7 @@ class CounterModule extends Module {
   @override
   void binds(Binder i) {
     // 1. Register Cubit as Factory or Singleton in Binder
-    i.factory<CounterCubit>(() => CounterCubit());
+    i.registerFactory<CounterCubit>(() => CounterCubit());
   }
 }
 

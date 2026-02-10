@@ -25,6 +25,6 @@ class AuthModule extends Module {
   @override
   void exports(Binder i) {
     // Public dependencies exposed to importers
-    i.singleton<AuthService>(() => AuthService());
+    i.registerLazySingleton<AuthService>(() => AuthService());
   }
 }

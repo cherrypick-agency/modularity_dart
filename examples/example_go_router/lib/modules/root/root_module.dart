@@ -11,6 +11,6 @@ class AuthService {
 class RootModule extends Module {
   @override
   void binds(Binder i) {
-    i.singleton<AuthService>(() => AuthService());
+    i.registerLazySingleton<AuthService>(() => AuthService());
   }
 }

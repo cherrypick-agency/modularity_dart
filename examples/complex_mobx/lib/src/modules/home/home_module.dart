@@ -15,7 +15,7 @@ class HomeModule extends Module {
 
   @override
   void binds(Binder i) {
-    i.singleton<ProductStore>(() => ProductStore());
+    i.registerLazySingleton<ProductStore>(() => ProductStore());
   }
 
   @override

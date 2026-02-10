@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "mermaid": "^11.12.2",
+    "vitepress-plugin-codeblocks-fold": "^1.2.35",
     "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

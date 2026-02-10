@@ -23,7 +23,7 @@ class ProductDetailsModule extends Module implements Configurable<Product> {
   @override
   void binds(Binder i) {
     // Local dependency
-    i.singleton<String>(() => 'Details for ${_product.name}');
+    i.registerLazySingleton<String>(() => 'Details for ${_product.name}');
   }
 
   @override

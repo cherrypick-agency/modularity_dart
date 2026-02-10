@@ -9,7 +9,7 @@ class CounterModule extends Module {
     // Modularity just manages Lifecycle/Navigation here.
     // Riverpod manages state.
     // BUT: We can inject Modularity dependencies INTO Riverpod.
-    i.singleton<AuthService>(() => AuthService('secret-token'));
+    i.registerLazySingleton<AuthService>(() => AuthService('secret-token'));
   }
 }
 

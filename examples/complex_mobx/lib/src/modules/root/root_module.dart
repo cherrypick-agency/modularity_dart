@@ -11,7 +11,7 @@ class RootModule extends Module {
   @override
   void binds(Binder i) {
     // GLOBAL SINGLETONS
-    i.singleton<AuthStore>(() => AuthStore());
-    i.singleton<CartStore>(() => CartStore());
+    i.registerLazySingleton<AuthStore>(() => AuthStore());
+    i.registerLazySingleton<CartStore>(() => CartStore());
   }
 }
