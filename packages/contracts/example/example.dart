@@ -5,10 +5,10 @@ class MyModule extends Module {
   @override
   void binds(Binder binder) {
     // Register a lazy singleton
-    binder.singleton<MyService>(() => MyService());
+    binder.registerLazySingleton<MyService>(() => MyService());
 
     // Register a factory
-    binder.factory<MyHelper>(() => MyHelper());
+    binder.registerFactory<MyHelper>(() => MyHelper());
   }
 }
 
@@ -35,23 +35,15 @@ class _MockBinder implements Binder {
   final Map<Type, dynamic> _instances = {};
 
   @override
-  void singleton<T extends Object>(T Function() factory) {
+  void registerLazySingleton<T extends Object>(T Function() factory) {
     print('Registered singleton ${T.toString()}');
     _instances[T] = factory();
   }
 
   @override
-  void registerLazySingleton<T extends Object>(T Function() factory) =>
-      singleton(factory);
-
-  @override
-  void factory<T extends Object>(T Function() factory) {
+  void registerFactory<T extends Object>(T Function() factory) {
     print('Registered factory ${T.toString()}');
   }
-
-  @override
-  void registerFactory<T extends Object>(T Function() factoryFunc) =>
-      factory(factoryFunc); // Fixed: factory() takes no args
 
   @override
   void registerSingleton<T extends Object>(T instance) {

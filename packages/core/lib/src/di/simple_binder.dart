@@ -99,18 +99,6 @@ class SimpleBinder
     );
   }
 
-  /// Shorthand alias for [registerLazySingleton].
-  @Deprecated('Use registerLazySingleton instead')
-  @override
-  void singleton<T extends Object>(T Function() factory) =>
-      registerLazySingleton(factory);
-
-  /// Shorthand alias for [registerFactory].
-  @Deprecated('Use registerFactory instead')
-  @override
-  void factory<T extends Object>(T Function() factory) =>
-      registerFactory(factory);
-
   void _register<T extends Object>(_Registration reg) {
     final target = _isExportMode ? _publicRegistrations : _privateRegistrations;
     final existing = target[T];

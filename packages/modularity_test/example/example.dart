@@ -7,7 +7,7 @@ class MyService {}
 class MyModule extends Module {
   @override
   void binds(Binder binder) {
-    binder.singleton(() => MyService());
+    binder.registerLazySingleton(() => MyService());
   }
 }
 

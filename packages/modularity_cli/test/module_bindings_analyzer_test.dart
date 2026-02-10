@@ -9,7 +9,7 @@ class ExposedService {}
 class SampleModule extends Module {
   @override
   void binds(Binder i) {
-    i.factory<_PrivateDependency>(() => _PrivateDependency());
+    i.registerFactory<_PrivateDependency>(() => _PrivateDependency());
   }
 
   @override

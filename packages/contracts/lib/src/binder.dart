@@ -11,24 +11,12 @@ enum RegistrationStrategy {
 /// Interface for registering dependencies.
 /// Abstracts the concrete DI implementation (be it GetIt, a map, or anything else).
 abstract class Binder {
-  /// Alias for [registerLazySingleton].
-  /// Registers a singleton. Created once on first request (lazy).
-  @Deprecated('Use registerLazySingleton instead')
-  void singleton<T extends Object>(T Function() factory);
-
   /// Registers a lazy singleton.
   /// Created once on first request.
-  /// Same as [singleton] in Binder, renamed to match the GetIt API.
   void registerLazySingleton<T extends Object>(T Function() factory);
-
-  /// Alias for [registerFactory].
-  /// Registers a factory. Creates a new instance on every request.
-  @Deprecated('Use registerFactory instead')
-  void factory<T extends Object>(T Function() factory);
 
   /// Registers a factory.
   /// Creates a new instance on every request.
-  /// Same as [factory] in Binder, renamed to match the GetIt API.
   void registerFactory<T extends Object>(T Function() factory);
 
   /// Registers an already-created instance (Eager Singleton).

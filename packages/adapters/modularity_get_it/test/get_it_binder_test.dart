@@ -558,20 +558,6 @@ void main() {
 
         expect(binder.get<StringBuffer>(), same(instance));
       });
-
-      test('singleton() is alias for registerLazySingleton', () {
-        final binder = GetItBinder();
-        binder.singleton<String>(() => 'via_alias');
-        expect(binder.get<String>(), equals('via_alias'));
-      });
-
-      test('factory() is alias for registerFactory', () {
-        final binder = GetItBinder();
-        var count = 0;
-        binder.factory<int>(() => ++count);
-        expect(binder.get<int>(), equals(1));
-        expect(binder.get<int>(), equals(2));
-      });
     });
 
     group('addImports', () {

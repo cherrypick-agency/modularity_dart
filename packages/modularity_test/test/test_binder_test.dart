@@ -5,8 +5,8 @@ import 'package:test/test.dart';
 class TestModule extends Module {
   @override
   void binds(Binder i) {
-    i.singleton<String>(() => 'singleton');
-    i.factory<int>(() => 42);
+    i.registerLazySingleton<String>(() => 'singleton');
+    i.registerFactory<int>(() => 42);
   }
 }
 

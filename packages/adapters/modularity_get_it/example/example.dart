@@ -4,7 +4,7 @@ import 'package:modularity_get_it/modularity_get_it.dart';
 class MyModule extends Module {
   @override
   void binds(Binder binder) {
-    binder.singleton(() => 'Bound with GetIt');
+    binder.registerLazySingleton(() => 'Bound with GetIt');
   }
 }
 

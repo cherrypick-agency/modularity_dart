@@ -9,12 +9,12 @@ class PublicService {}
 class FeatureModule extends Module {
   @override
   void binds(Binder i) {
-    i.singleton<_PrivateService>(() => _PrivateService());
+    i.registerLazySingleton<_PrivateService>(() => _PrivateService());
   }
 
   @override
   void exports(Binder i) {
-    i.singleton<PublicService>(() => PublicService());
+    i.registerLazySingleton<PublicService>(() => PublicService());
   }
 }
 

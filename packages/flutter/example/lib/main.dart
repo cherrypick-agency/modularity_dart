@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
 class HomeModule extends Module {
   @override
   void binds(Binder binder) {
-    binder.singleton(() => 'Hello from Home Module!');
+    binder.registerLazySingleton(() => 'Hello from Home Module!');
   }
 }
 

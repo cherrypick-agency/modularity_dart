@@ -115,16 +115,6 @@ class RecordingBinder implements ExportableBinder {
     _record(T, DependencyRegistrationKind.instance);
   }
 
-  @Deprecated('Use registerLazySingleton instead')
-  @override
-  void singleton<T extends Object>(T Function() factory) =>
-      registerLazySingleton(factory);
-
-  @Deprecated('Use registerFactory instead')
-  @override
-  void factory<T extends Object>(T Function() factory) =>
-      registerFactory(factory);
-
   void _record(Type type, DependencyRegistrationKind kind) {
     final record = DependencyRecord(type, kind);
     if (_isExportMode) {

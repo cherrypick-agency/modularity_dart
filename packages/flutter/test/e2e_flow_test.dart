@@ -19,12 +19,12 @@ class UserService {
 class AuthModule extends Module {
   @override
   void binds(Binder i) {
-    i.singleton<AuthService>(() => AuthService());
+    i.registerLazySingleton<AuthService>(() => AuthService());
   }
 
   @override
   void exports(Binder i) {
-    i.singleton<AuthService>(() => AuthService());
+    i.registerLazySingleton<AuthService>(() => AuthService());
   }
 }
 
@@ -34,7 +34,9 @@ class UserModule extends Module {
 
   @override
   void binds(Binder i) {
-    i.singleton<UserService>(() => UserService(i.get<AuthService>()));
+    i.registerLazySingleton<UserService>(
+      () => UserService(i.get<AuthService>()),
+    );
   }
 }
 
@@ -44,7 +46,7 @@ class FeatureModule extends Module {
 
   @override
   void binds(Binder i) {
-    i.singleton<String>(() => 'Feature Data');
+    i.registerLazySingleton<String>(() => 'Feature Data');
   }
 }
 

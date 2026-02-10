@@ -29,9 +29,6 @@ class _NotGetItBinder implements Binder {
   bool contains(Type type) => false;
 
   @override
-  void factory<T extends Object>(T Function() factory) {}
-
-  @override
   T get<T extends Object>() => throw UnimplementedError();
 
   @override
@@ -42,9 +39,6 @@ class _NotGetItBinder implements Binder {
 
   @override
   void registerSingleton<T extends Object>(T instance) {}
-
-  @override
-  void singleton<T extends Object>(T Function() factory) {}
 
   @override
   T? tryGet<T extends Object>() => null;

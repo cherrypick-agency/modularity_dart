@@ -53,8 +53,6 @@ class ModuleScope<T extends Module> extends StatefulWidget {
     this.retentionPolicy = ModuleRetentionPolicy.routeBound,
     this.retentionKey,
     this.retentionExtras,
-    @Deprecated('Use retentionPolicy/retentionKey instead')
-    this.disposeModule = true,
     this.overrides,
     this.overrideScope,
   });
@@ -89,10 +87,6 @@ class ModuleScope<T extends Module> extends StatefulWidget {
   /// Additional data for retention key derivation.
   final Map<String, Object?>? retentionExtras;
 
-  /// Whether to dispose the module controller on widget unmount.
-  @Deprecated('Use retentionPolicy/retentionKey instead')
-  final bool disposeModule;
-
   /// Overrides applied to module's bindings.
   final void Function(Binder)? overrides;
 
@@ -118,7 +112,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   @override
   void initState() {
     super.initState();
-    _policy = _derivePolicy(widget);
+    _policy = widget.retentionPolicy;
   }
 
   @override
@@ -132,12 +126,6 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     assert(
       oldWidget.retentionKey == widget.retentionKey,
       'Changing retentionKey at runtime is not supported.',
-    );
-    // ignore: deprecated_member_use_from_same_package
-    assert(
-      // ignore: deprecated_member_use_from_same_package
-      oldWidget.disposeModule == widget.disposeModule,
-      'Changing disposeModule at runtime is not supported.',
     );
   }
 
@@ -281,14 +269,6 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     if (disposeController) {
       await controller.dispose();
     }
-  }
-
-  ModuleRetentionPolicy _derivePolicy(ModuleScope<T> scope) {
-    // ignore: deprecated_member_use_from_same_package
-    if (!scope.disposeModule) {
-      return ModuleRetentionPolicy.keepAlive;
-    }
-    return scope.retentionPolicy;
   }
 
   @override

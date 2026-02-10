@@ -24,7 +24,7 @@ class ServiceB {
 class SharedModule extends Module {
   @override
   void exports(Binder i) {
-    i.singleton<SharedService>(() => SharedService());
+    i.registerLazySingleton<SharedService>(() => SharedService());
   }
 
   @override
@@ -37,7 +37,7 @@ class ModuleA extends Module {
 
   @override
   void exports(Binder i) {
-    i.singleton<ServiceA>(() => ServiceA(i.get<SharedService>()));
+    i.registerLazySingleton<ServiceA>(() => ServiceA(i.get<SharedService>()));
   }
 
   @override
@@ -50,7 +50,7 @@ class ModuleB extends Module {
 
   @override
   void exports(Binder i) {
-    i.singleton<ServiceB>(() => ServiceB(i.get<SharedService>()));
+    i.registerLazySingleton<ServiceB>(() => ServiceB(i.get<SharedService>()));
   }
 
   @override
@@ -75,7 +75,7 @@ class GrandData {
 class GrandParentModule extends Module {
   @override
   void binds(Binder i) {
-    i.singleton<GrandData>(() => GrandData());
+    i.registerLazySingleton<GrandData>(() => GrandData());
   }
 }
 

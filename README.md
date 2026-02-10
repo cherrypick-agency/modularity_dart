@@ -618,13 +618,14 @@ Available events: `created`, `reused`, `registered`, `disposed`, `evicted`, `rel
 
 | Method | Description |
 |--------|-------------|
-| `factory<T>()` / `registerFactory<T>()` | New instance on each `get<T>()` call |
-| `singleton<T>()` / `registerSingleton<T>()` | Instance created immediately |
-| `lazySingleton<T>()` / `registerLazySingleton<T>()` | Instance created on first access |
+| `registerFactory<T>(() => ...)` | New instance on each `get<T>()` call |
+| `registerSingleton<T>(instance)` | Eagerly registered, always returns the same instance |
+| `registerLazySingleton<T>(() => ...)` | Instance created on first `get<T>()` call |
 | `get<T>()` | Retrieve dependency (throws if not found) |
 | `tryGet<T>()` | Retrieve dependency (returns null if not found) |
-| `contains<T>()` | Check if type is registered |
+| `contains(Type)` | Check if type is registered |
 | `parent<T>()` | Get from parent scope only |
+| `tryParent<T>()` | Get from parent scope (returns null if not found) |
 
 ## Retention Key vs Override Scope
 

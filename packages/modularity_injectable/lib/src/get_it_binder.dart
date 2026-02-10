@@ -90,16 +90,6 @@ class GetItBinder implements ExportableBinder, DisposableBinder {
     _register<T>((scope) => scope.registerSingleton<T>(instance));
   }
 
-  @Deprecated('Use registerLazySingleton instead')
-  @override
-  void singleton<T extends Object>(T Function() factory) =>
-      registerLazySingleton(factory);
-
-  @Deprecated('Use registerFactory instead')
-  @override
-  void factory<T extends Object>(T Function() factory) =>
-      registerFactory(factory);
-
   @override
   T get<T extends Object>() {
     final value = tryGet<T>();

@@ -8,12 +8,12 @@ class AuthRepository {}
 class AuthModule extends Module {
   @override
   void binds(Binder binder) {
-    binder.singleton<AuthRepository>(() => AuthRepository());
+    binder.registerLazySingleton<AuthRepository>(() => AuthRepository());
   }
 
   @override
   void exports(Binder binder) {
-    binder.singleton<AuthService>(() => AuthService());
+    binder.registerLazySingleton<AuthService>(() => AuthService());
   }
 }
 

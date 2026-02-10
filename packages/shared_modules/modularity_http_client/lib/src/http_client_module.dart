@@ -75,7 +75,7 @@ class HttpClientModule extends Module
     i.registerSingleton<HttpClientRegistry>(_registry);
 
     // Export default client for simple access via binder.get<HttpClient>()
-    i.singleton<HttpClient>(() => _registry.defaultClient);
+    i.registerLazySingleton<HttpClient>(() => _registry.defaultClient);
   }
 
   @override
