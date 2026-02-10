@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "mermaid": "^11.12.2",
-    "vitepress-plugin-codeblocks-fold": "^1.2.35",
+    "vitepress-codeblock-collapse": "^1.0.0",
+    "vitepress-mermaid-zoom": "^1.0.0",
     "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

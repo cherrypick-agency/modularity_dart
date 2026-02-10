@@ -1,7 +1,10 @@
+import { computed } from 'vue'
 import DefaultTheme from 'vitepress/theme'
-import { useData, useRoute } from 'vitepress'
-import codeblocksFold from 'vitepress-plugin-codeblocks-fold'
-import 'vitepress-plugin-codeblocks-fold/style/index.css'
+import { useData } from 'vitepress'
+import { useCodeblockCollapse } from 'vitepress-codeblock-collapse'
+import 'vitepress-codeblock-collapse/style.css'
+import { useMermaidZoom } from 'vitepress-mermaid-zoom'
+import 'vitepress-mermaid-zoom/style.css'
 import './custom.css'
 import DartPad from './components/DartPad.vue'
 import ApiBreadcrumb from './components/ApiBreadcrumb.vue'
@@ -13,8 +16,9 @@ export default {
     app.component('ApiBreadcrumb', ApiBreadcrumb)
   },
   setup() {
-    const { frontmatter } = useData()
-    const route = useRoute()
-    codeblocksFold({ route, frontmatter }, true, 400)
+    const { page } = useData()
+    const pagePath = computed(() => page.value.relativePath)
+    useCodeblockCollapse(pagePath)
+    useMermaidZoom(pagePath)
   }
 }

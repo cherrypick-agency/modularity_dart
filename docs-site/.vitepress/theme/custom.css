@@ -138,6 +138,29 @@
   }
 }
 
+/* Codeblock fold button styles */
+
+.vp-doc div.fold[class*="language-"] > .codeblocks-mask {
+  background: linear-gradient(to bottom, transparent, var(--vp-code-block-bg));
+}
+
+.vp-doc div.fold[class*="language-"] > .fold-btn {
+  background: var(--vp-c-bg-soft);
+  border-top: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.vp-doc div.fold[class*="language-"] > .fold-btn:hover {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+/* Ensure margin for the fold button below the code block */
+:root {
+  --codeblocks-margin-bottom: 44px;
+}
+
 /* API auto-linker — inline code that links to API docs */
 
 a.api-link {
