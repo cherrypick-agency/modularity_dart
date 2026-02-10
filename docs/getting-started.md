@@ -54,13 +54,20 @@ class AuthModule extends Module {
 
 ## Wire the App
 
-Three widgets connect modules to Flutter:
+Two widgets connect modules to Flutter:
 
-| Widget | Role |
-|--------|------|
+| Component | Role |
+|-----------|------|
 | `ModularityRoot` | Top-level `InheritedWidget`. Holds the global registry and `BinderFactory`. |
 | `ModuleScope<T>` | Manages one module's lifecycle. |
-| `Modularity.observer` | `RouteObserver` for `routeBound` retention. |
+
+::: tip Modularity.observer
+`Modularity.observer` is a global `RouteObserver` required for `routeBound` retention policy. Pass it to `navigatorObservers`.
+:::
+
+::: warning Default Retention Policy
+The default retention policy is `routeBound`, which means `Modularity.observer` **must** be added to `navigatorObservers`. If you don't need route-bound retention, explicitly set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope` to skip the observer requirement.
+:::
 
 ```dart
 import 'package:flutter/material.dart';
@@ -90,7 +97,7 @@ class MyApp extends StatelessWidget {
 ```
 
 ::: warning
-`ModularityRoot` must be above any `ModuleScope` in the tree. `Modularity.observer` is required only if you use `routeBound` retention.
+`ModularityRoot` must be above any `ModuleScope` in the widget tree.
 :::
 
 ## Access Dependencies
@@ -122,11 +129,15 @@ class LoginPage extends StatelessWidget {
 | `parent<T>()` | `T` | Throws (parent scope only) |
 | `tryParent<T>()` | `T?` | Returns `null` (parent scope only) |
 
-### Resolution Order
+::: info Resolution Order
+`get<T>()` searches scopes in this order:
 
-`get<T>()` searches: **Local** (private + public) -> **Imports** (public exports) -> **Parent** (nearest ancestor `ModuleScope`).
+1. **Local** -- private + public bindings of the current module
+2. **Imports** -- public exports of imported modules
+3. **Parent** -- nearest ancestor `ModuleScope`
 
 If nothing matches, `DependencyNotFoundException` is thrown with a list of available types.
+:::
 
 ### Get the Module Instance
 
@@ -138,12 +149,19 @@ final auth = ModuleProvider.moduleOf<AuthModule>(context);
 
 `ModuleController` drives a deterministic lifecycle:
 
-```
-initial --> loading --> loaded --> disposed
-                  \--> error
+```mermaid
+stateDiagram-v2
+    [*] --> initial
+    initial --> loading : initialize()
+    loading --> loaded : success
+    loading --> error : failure
+    loaded --> disposed : dispose()
+    error --> loading : retry
+    error --> disposed : dispose()
+    disposed --> [*]
 ```
 
-### Hooks
+::: details Full Lifecycle Hooks Reference
 
 | Hook | Timing |
 |------|--------|
@@ -151,6 +169,8 @@ initial --> loading --> loaded --> disposed
 | `exports(Binder i)` | Sync, right after `binds()` |
 | `onInit()` | Async, after binds/exports |
 | `onDispose()` | On controller disposal |
+
+:::
 
 ### Loading and Error UI
 
@@ -166,6 +186,8 @@ ModuleScope<PaymentModule>(
 )
 ```
 
-Fallback order: per-scope builder -> `ModularityRoot` defaults -> built-in placeholder.
-
-The `retry` callback disposes the failed controller and re-runs the full initialization cycle.
+::: tip Best Practices
+- Fallback order: per-scope builder -> `ModularityRoot` defaults -> built-in placeholder.
+- The `retry` callback disposes the failed controller and re-runs the full initialization cycle.
+- Keep modules focused -- one feature domain per module.
+:::

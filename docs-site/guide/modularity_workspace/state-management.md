@@ -4,12 +4,19 @@ Modularity handles **DI and lifecycle**. State management libraries handle **rea
 
 ## Core Principle
 
-```
-Modularity          State Management
-────────────        ──────────────────
-DI container        Reactive state
-Module lifecycle    UI rebuilds
-Scope chaining      Streams / signals / observables
+```mermaid
+flowchart LR
+    subgraph Modularity
+        DI[DI Container<br/>Binder]
+    end
+    subgraph State
+        B[Bloc/Cubit]
+        R[Riverpod]
+        M[MobX Store]
+    end
+    DI -->|provides repos/services| B
+    DI -->|provides repos/services| R
+    DI -->|provides repos/services| M
 ```
 
 The pattern is always the same:
@@ -19,6 +26,48 @@ The pattern is always the same:
 3. Feed them into the state management library's provider or observer widget.
 
 `ModuleScope` creates and disposes the DI scope. Inside that scope, use `BlocProvider`, `ProviderScope`, `Observer`, or any other mechanism to wire reactive state to the widget tree.
+
+::: warning
+Do not manage DI container state with your state management library. Modularity owns object creation, scoping, and disposal. The state management library owns reactivity and UI rebuilds. Mixing these responsibilities leads to lifecycle bugs and memory leaks.
+:::
+
+## Registration Patterns
+
+All three libraries follow the same registration flow. The only difference is the bridge widget used to connect the resolved instance to the UI.
+
+::: code-group
+
+```dart [Bloc/Cubit]
+class CounterModule extends Module {
+  @override
+  void binds(Binder i) {
+    i.registerFactory<CounterCubit>(() => CounterCubit());
+  }
+}
+```
+
+```dart [Riverpod]
+class CounterModule extends Module {
+  @override
+  void binds(Binder i) {
+    i.registerLazySingleton<AuthService>(
+      () => AuthService('api-token'),
+    );
+  }
+}
+```
+
+```dart [MobX]
+class RootModule extends Module {
+  @override
+  void binds(Binder i) {
+    i.registerLazySingleton<AuthStore>(() => AuthStore());
+    i.registerLazySingleton<CartStore>(() => CartStore());
+  }
+}
+```
+
+:::
 
 ## Bloc / Cubit
 
@@ -450,6 +499,14 @@ Navigator.of(context).push(
 
 Share state across modules using **scope chaining**. Register shared state in a parent module and declare it in child modules via `expects`:
 
+```mermaid
+flowchart TB
+    Root[RootModule<br/>exports: AuthService] --> Child1[FeatureModule A]
+    Root --> Child2[FeatureModule B]
+    Child1 -->|parent get AuthService| Root
+    Child2 -->|parent get AuthService| Root
+```
+
 ```
 ModuleScope(RootModule)          <-- registers AuthStore, CartStore
   +-- ModuleScope(HomeModule)     <-- expects: [CartStore]
@@ -487,7 +544,7 @@ Any child module can call `ModuleProvider.of(context).get<CartStore>()` and rece
 
 ### Reading Parent Dependencies
 
-`get<T>()` searches: local scope -> imports -> parent scope. The parent's `CartStore` singleton is found automatically.
+`get<T>()` searches in this order: **private scope** (registrations from `binds()`) -> **imports** (exported registrations from imported modules) -> **parent scope**. Private registrations are checked first, so a local binding always shadows a parent binding of the same type.
 
 If a child module also registers a `CartStore` locally and you need the parent's version:
 
@@ -497,12 +554,13 @@ final parentCart = ModuleProvider.of(context).parent<CartStore>();
 
 ### Exported Dependencies
 
-For cross-module sharing between siblings (not parent-child), use `imports` and `exports()`:
+For cross-module sharing between siblings (not parent-child), use `imports` and `exports()`. The key distinction: `binds()` writes to the module's **private scope** (only visible within the module itself), while `exports()` writes to the **public scope** (visible to any module that imports this one).
 
 ```dart
 class AuthModule extends Module {
   @override
   void binds(Binder i) {
+    // Private scope: only AuthModule can resolve this
     i.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(),
     );
@@ -510,6 +568,7 @@ class AuthModule extends Module {
 
   @override
   void exports(Binder i) {
+    // Public scope: available to importing modules
     i.registerLazySingleton<AuthService>(
       () => AuthService(i.get<AuthRepository>()),
     );
@@ -580,6 +639,15 @@ Each tab has its own `ModuleScope` but shares `AuthStore` and `CartStore` from `
 
 ## Choosing a Pattern
 
+::: tip Best Practices
+- **Bloc/Cubit** -- best for complex event-driven flows, built-in testing utilities, strong separation of events and states.
+- **Riverpod** -- best when you already have a Riverpod codebase, or need fine-grained provider dependencies without `BuildContext`.
+- **MobX** -- best for minimal boilerplate reactivity, especially if your team comes from a MobX/React background.
+
+In all cases, let Modularity own object creation and scoping. The state library owns reactivity.
+:::
+
+::: info Comparison Table
 | Scenario | Recommendation |
 |----------|---------------|
 | Simple app, few screens | Modularity only, no extra state lib |
@@ -588,20 +656,74 @@ Each tab has its own `ModuleScope` but shares `AuthStore` and `CartStore` from `
 | Cross-module shared state | Register in a parent `ModuleScope`, declare `expects` in children |
 | Per-route ephemeral state | `registerFactory` in `binds()`, new instance each time |
 | App-wide singleton | `registerLazySingleton` in root module's `binds()` |
+:::
 
 ## Summary
 
+::: info Integration Summary
 | State Library | Register in | Bridge widget | Consume with |
 |---------------|------------|---------------|-------------|
 | Bloc/Cubit | `binds()` | `BlocProvider(create: binder.get)` | `BlocBuilder`, `context.read` |
 | Riverpod | `binds()` | `ProviderScope(overrides: [...])` | `ref.watch`, `ref.read` |
 | MobX | `binds()` | None needed | `Observer(builder: ...)` |
+:::
 
 All three follow the same flow:
 
 1. Register in `binds()` (Modularity owns creation and disposal)
 2. Resolve via `ModuleProvider.of(context).get<T>()`
 3. Feed to the state management layer's own provider/observer
+
+::: code-group
+
+```dart [Bloc/Cubit]
+// Register
+i.registerFactory<CounterCubit>(() => CounterCubit());
+
+// Bridge
+BlocProvider(
+  create: (_) => ModuleProvider.of(context, listen: false)
+      .get<CounterCubit>(),
+  child: const CounterView(),
+);
+
+// Consume
+BlocBuilder<CounterCubit, int>(
+  builder: (context, count) => Text('$count'),
+);
+```
+
+```dart [Riverpod]
+// Register
+i.registerLazySingleton<AuthService>(() => AuthService());
+
+// Bridge
+ProviderScope(
+  overrides: [
+    authServiceProvider.overrideWithValue(
+      ModuleProvider.of(context).get<AuthService>(),
+    ),
+  ],
+  child: const CounterView(),
+);
+
+// Consume
+final auth = ref.watch(authServiceProvider);
+```
+
+```dart [MobX]
+// Register
+i.registerLazySingleton<AuthStore>(() => AuthStore());
+
+// Bridge: none needed
+
+// Consume
+Observer(
+  builder: (_) => Text('${authStore.count}'),
+);
+```
+
+:::
 
 ::: tip
 Modularity does not replace your state management library. It manages *when* reactive objects are created and destroyed, scoped to module boundaries. Your chosen library handles *how* the UI reacts to state changes.

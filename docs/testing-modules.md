@@ -2,6 +2,16 @@
 
 Test Modularity modules with `modularity_test` for unit tests and `ModuleScope` for widget tests.
 
+## Choosing the Right Test Type
+
+```mermaid
+flowchart TB
+    A{What to test?} -->|Module logic| B[Unit Test<br/>testModule]
+    A -->|Widget + Module| C[Widget Test<br/>ModularityRoot + ModuleScope]
+    A -->|Error handling| D[Error Scenarios<br/>controller.initialize]
+    A -->|Lifecycle| E[Manual Controller<br/>ModuleController]
+```
+
 ## Setup
 
 ```yaml
@@ -44,6 +54,7 @@ test('AuthModule registers expected dependencies', () async {
 
 ### TestBinder API
 
+::: info TestBinder reference
 | Method | Description |
 |--------|-------------|
 | `hasSingleton<T>()` | Was `T` registered via `registerLazySingleton`? |
@@ -54,6 +65,7 @@ test('AuthModule registers expected dependencies', () async {
 | `registeredFactories` | All types registered as factories |
 | `registeredInstances` | All types registered as eager instances |
 | `resolvedTypes` | All types that were resolved |
+:::
 
 ## Overriding Dependencies in Tests
 
@@ -72,6 +84,10 @@ test('override HttpClient with fake', () async {
   );
 });
 ```
+
+::: tip
+Use `overrideScope` when you need to override bindings in deeply nested imported modules. It lets you target specific child modules without affecting the rest of the dependency tree.
+:::
 
 For modules with imports, use `overrideScope` to target specific child modules:
 
@@ -157,6 +173,8 @@ testWidgets('override imported module in widget tree', (tester) async {
 
 ## Testing Error Scenarios
 
+::: details Error Scenarios (advanced)
+
 ### Circular dependency detection
 
 ```dart
@@ -209,6 +227,8 @@ testWidgets('retry recovers from init failure', (tester) async {
 });
 ```
 
+:::
+
 ## Testing Async `onInit`
 
 `testModule()` awaits the full lifecycle including `onInit()`:
@@ -237,6 +257,6 @@ test('manual controller lifecycle', () async {
 });
 ```
 
-:::warning
+::: warning
 `testModule()` automatically disposes the controller. Only create `ModuleController` directly when you need to test lifecycle states or interceptor behavior.
 :::

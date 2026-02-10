@@ -4,12 +4,14 @@ The `modularity_injectable` package replaces manual `binds()`/`exports()` wiring
 
 ## When to Use
 
+::: info When to Use Injectable
 | Approach | Best for |
 |----------|----------|
 | Manual `binds()`/`exports()` | Small modules (< 5 registrations), no build_runner needed |
 | `modularity_injectable` | 10+ dependencies, constructor auto-injection, teams already using injectable/get_it |
 
 Both approaches coexist in the same app.
+:::
 
 ## Setup
 
@@ -58,6 +60,12 @@ await controller.initialize({});
 ```
 
 ## Annotating Dependencies
+
+::: tip Annotation Guidance
+- Use `@LazySingleton()` for stateful services, repositories, and caches -- one instance per module scope.
+- Use `@Injectable()` for stateless use cases and transient objects -- new instance on every resolve.
+- Use `@LazySingleton(as: AbstractType)` to register an implementation against its interface.
+:::
 
 ### Private (module-internal)
 
@@ -157,6 +165,20 @@ class AuthModule extends Module {
 - `configureInternal` registers **all** annotated dependencies into the private scope.
 - `configureExports` registers **only** dependencies tagged with `modularity_export` into the public scope via a `ModularityExportOnly` environment filter.
 
+### Registration Flow
+
+```mermaid
+sequenceDiagram
+    participant M as Module
+    participant B as GetItBinder
+    participant I as Injectable
+    M->>B: binds(binder)
+    B->>I: configureInternal(binder)
+    I->>B: register via BinderGetIt
+    M->>B: exports(binder)
+    B->>I: configureExports(binder)
+```
+
 ### Mixing manual and generated registrations
 
 ```dart
@@ -183,6 +205,22 @@ Each `GetItBinder` manages two isolated GetIt containers:
 - **Private scope** (`internalContainer`) -- receives `binds()` registrations
 - **Public scope** (`publicContainer`) -- receives `exports()` registrations
 
+```mermaid
+flowchart TB
+    subgraph GetItBinder
+        IC[Internal Container<br/>internalGetIt]
+        PC[Public Container<br/>publicGetIt]
+    end
+    subgraph BinderGetIt Proxy
+        BG[BinderGetIt]
+    end
+    Injectable -->|configureInternal| IC
+    Injectable -->|configureExports| PC
+    BG -->|isRegistered?| IC
+    BG -->|fallback tryGet| Binder
+    BG -->|final fallback| IC
+```
+
 Dependency resolution order:
 
 1. Local private scope
@@ -192,7 +230,11 @@ Dependency resolution order:
 
 ### BinderGetIt -- the GetIt proxy
 
-Injectable-generated code calls `getIt.get<T>()` for constructor parameters. `BinderGetIt` wraps a GetIt instance and intercepts `get<T>()`:
+::: warning BinderGetIt is a proxy, not a real GetIt
+Injectable-generated code calls `getIt.get<T>()` for constructor parameters. `BinderGetIt` wraps a GetIt instance and intercepts `get<T>()` to bridge modularity's scoping with GetIt's flat registry. It does **not** extend GetIt -- it implements its interface and delegates selectively.
+:::
+
+Resolution steps inside `BinderGetIt.get<T>()`:
 
 1. Named/parameterized lookups delegate directly to GetIt
 2. If `T` is registered locally, return it

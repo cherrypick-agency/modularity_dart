@@ -33,6 +33,13 @@ Simple overrides only affect the root module's binder. To override bindings insi
 
 A hierarchical tree that maps module types to override callbacks, targeting specific modules in the import graph.
 
+```mermaid
+flowchart TB
+    Root[ModuleOverrideScope<br/>selfOverrides]
+    Root --> Child1[AuthModule overrides]
+    Root --> Child2[DataModule overrides]
+```
+
 ### Structure
 
 ```dart
@@ -101,13 +108,23 @@ final merged = scopeA.merge(scopeB);
 
 ## Override Timing
 
-```
-imports resolved -> binds() -> overrides() -> exports() -> seal -> onInit()
+```mermaid
+flowchart LR
+    A[imports resolved] --> B[binds]
+    B --> C[overrides applied]
+    C --> D[exports]
+    D --> E[seal]
+    E --> F[onInit]
+    style C fill:#ff9,stroke:#333
 ```
 
+::: info
 Overrides run between `binds()` and `exports()`, so they replace private registrations before export. Dependencies resolved via `binder.get<T>()` in `exports()` pick up the overridden instances.
+:::
 
+::: tip Hot Reload
 During `hotReload()`, overrides are re-applied with the same timing -- no additional setup needed.
+:::
 
 ## Interceptors
 
@@ -184,6 +201,8 @@ Output example:
 [Modularity] EVICTED ProfileModule key=ProfileModule-/profile
 ```
 
+::: details ModuleLifecycleEvent enum values
+
 | Event | Description |
 |-------|-------------|
 | `created` | Controller created for the first time |
@@ -193,6 +212,8 @@ Output example:
 | `evicted` | Controller evicted from retention cache |
 | `released` | Controller released (ref count decremented) |
 | `routeTerminated` | Route termination triggered controller cleanup |
+
+:::
 
 ## Common Use Cases
 

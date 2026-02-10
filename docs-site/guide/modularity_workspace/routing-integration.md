@@ -2,6 +2,16 @@
 
 Wrap each route in a `ModuleScope` so modules follow navigation lifecycle automatically. Modularity is router-agnostic -- the same pattern works with GoRouter, AutoRoute, or Navigator 1.0.
 
+## Scope Nesting with Routes
+
+```mermaid
+flowchart TB
+    MR[ModularityRoot] --> RS[RootModule scope]
+    RS --> Auth[AuthModule scope<br/>/login]
+    RS --> Home[HomeModule scope<br/>/home]
+    Home --> Details[DetailsModule scope<br/>/home/details/:id]
+```
+
 ## Core Pattern
 
 One route = one `ModuleScope`. The scope creates a `ModuleController`, runs `binds()` / `exports()` / `onInit()`, and disposes the controller when the route is removed.
@@ -20,6 +30,7 @@ ModuleScope(
 
 ### Scope Chaining
 
+::: info
 Nested `ModuleScope` widgets form a parent-child chain. Child scopes can resolve dependencies registered by any ancestor scope via `get<T>()`:
 
 ```
@@ -28,6 +39,7 @@ ModularityRoot
         └── MaterialApp.router
               └── ModuleScope<HomeModule>  <- get<AuthService>() resolves from parent
 ```
+:::
 
 ### Configurable Modules
 
@@ -88,11 +100,23 @@ MaterialApp(
 Without `Modularity.observer`, `routeBound` retention cannot detect route pops. Controllers will only dispose when the widget itself is unmounted. Always register the observer at the app level.
 :::
 
-## GoRouter
+## GoRouter vs AutoRoute Integration Points
 
-### Setup
+```mermaid
+flowchart LR
+    subgraph GoRouter
+        GR1[GoRoute.builder] --> GR2[ModuleScope in builder]
+    end
+    subgraph AutoRoute
+        AR1[RoutePage widget] --> AR2[ModuleScope in build]
+    end
+```
 
-```dart
+## App Setup
+
+::: code-group
+
+```dart [GoRouter]
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
@@ -116,7 +140,41 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+```dart [AutoRoute]
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ModularityRoot(
+      child: ModuleScope(
+        module: RootModule(),
+        child: Builder(
+          builder: (context) {
+            final authService =
+                ModuleProvider.of(context).get<AuthService>();
+            final appRouter = AppRouter(authService);
+
+            return MaterialApp.router(
+              routerConfig: appRouter.config(
+                navigatorObservers: () => [Modularity.observer],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+```
+
+:::
+
 `RootModule` sits above the router so every route inherits its dependencies through scope chaining. The `Builder` creates a context that already has access to `RootModule` dependencies.
+
+AutoRoute passes resolved dependencies into the router constructor so guards can use them, and registers the observer through `config(navigatorObservers: ...)` rather than the `MaterialApp` constructor.
+
+## GoRouter
 
 ### Route Definitions
 
@@ -221,38 +279,6 @@ The `redirect` callback receives a `BuildContext` that sits below `ModularityRoo
 
 ## AutoRoute
 
-### Setup
-
-```dart
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ModularityRoot(
-      child: ModuleScope(
-        module: RootModule(),
-        child: Builder(
-          builder: (context) {
-            final authService =
-                ModuleProvider.of(context).get<AuthService>();
-            final appRouter = AppRouter(authService);
-
-            return MaterialApp.router(
-              routerConfig: appRouter.config(
-                navigatorObservers: () => [Modularity.observer],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-```
-
-Pass resolved dependencies into the router constructor so guards can use them. AutoRoute registers the observer through `config(navigatorObservers: ...)` rather than the `MaterialApp` constructor.
-
 ### Route Pages with ModuleScope
 
 With AutoRoute, wrap `ModuleScope` inside `@RoutePage()` widgets:
@@ -276,7 +302,7 @@ class HomePage extends StatelessWidget {
 ```
 
 ::: tip
-Place `ModuleScope` inside the page widget rather than in route configuration. This keeps module ownership co-located with the page that uses it.
+Co-locate `ModuleScope` with its route page. Place it inside the page widget rather than in route configuration so module ownership stays next to the page that uses it.
 :::
 
 ### Router Configuration and Guards

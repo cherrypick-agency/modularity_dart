@@ -2,6 +2,17 @@
 
 Control how long a `ModuleController` lives relative to the widget tree and navigation stack.
 
+## Controller Lifecycle with Retention
+
+```mermaid
+stateDiagram-v2
+    [*] --> Cached : first mount
+    Cached --> Active : acquire (refCount++)
+    Active --> Active : re-mount (refCount++)
+    Active --> Cached : unmount (refCount--)
+    Cached --> [*] : route pop / evict
+```
+
 ## Retention Policies
 
 Every `ModuleScope` accepts a `retentionPolicy` parameter. Three policies are available:
@@ -20,6 +31,31 @@ ModuleScope(
   child: ProfileView(),
 )
 ```
+
+### Policy Comparison
+
+```mermaid
+flowchart LR
+    subgraph routeBound[routeBound - default]
+        RB1[Mount] --> RB2[Cache]
+        RB2 --> RB3[Dispose on route pop]
+    end
+    subgraph keepAlive
+        KA1[Mount] --> KA2[Cache]
+        KA2 --> KA3[Survives route pops]
+        KA3 --> KA4[Dispose on evict]
+    end
+    subgraph strict
+        S1[Mount] --> S2[No cache]
+        S2 --> S3[Dispose on unmount]
+    end
+```
+
+::: tip When to Use Each Policy
+- **routeBound** -- feature screens tied to navigation (order details, checkout, profile pages).
+- **keepAlive** -- tabs that preserve state, cached data modules (user profile, shopping cart), long-lived background services.
+- **strict** -- ephemeral dialogs, bottom sheets, widgets that must not share state across rebuilds.
+:::
 
 ## routeBound
 
@@ -44,8 +80,6 @@ Key behaviors:
 - Each mount creates a fresh controller; no caching between mounts.
 - If there is no enclosing `ModalRoute` (e.g. the module is inside a dialog without its own route), the strategy silently skips route subscription.
 
-Best for: feature screens tied to navigation (order details, checkout, profile pages).
-
 ## keepAlive
 
 ```dart
@@ -60,8 +94,6 @@ The controller is disposed when:
 2. **Route terminates** -- even `keepAlive` controllers track their enclosing route. When the route pops, the controller is evicted automatically.
 3. **Explicit eviction** -- call `ModuleRetainer.evict(key)` to force removal regardless of ref count.
 
-Best for: tabs that preserve state, cached data modules (user profile, shopping cart), long-lived background services.
-
 ## strict
 
 ```dart
@@ -70,14 +102,11 @@ ModuleRetentionPolicy.strict
 
 Dispose the controller the moment `ModuleScope` leaves the widget tree. No caching, no route observation. One widget instance = one controller lifetime.
 
-Best for: ephemeral dialogs, bottom sheets, widgets that must not share state across rebuilds.
-
 ## Retention Keys
 
 A retention key uniquely identifies a cached controller within `ModuleRetainer`. Two `ModuleScope` widgets with the same key and `keepAlive` policy share the same controller.
 
-### Automatic Derivation
-
+::: info Automatic Key Derivation
 When `retentionKey` is not provided, the framework computes one from:
 
 | Input | Source |
@@ -89,6 +118,7 @@ When `retentionKey` is not provided, the framework computes one from:
 | Extras | `retentionExtras` map on `ModuleScope` |
 
 All inputs are combined via `Object.hashAll`. This is sufficient when each route has at most one instance of a given module type.
+:::
 
 ### Explicit Key
 
@@ -142,6 +172,8 @@ ModuleScope(
 
 `ModuleRetainer` is stored in `ModularityRoot` and manages the `keepAlive` cache. Access it via `ModularityRoot.retainerOf(context)`.
 
+::: details ModuleRetainer Methods
+
 | Method | Description |
 |--------|-------------|
 | `contains(key)` | Check if a controller is cached under `key` |
@@ -151,6 +183,8 @@ ModuleScope(
 | `evict(key, {disposeController})` | Remove and optionally dispose the controller unconditionally |
 | `peek(key)` | Return the controller without changing ref count |
 | `debugSnapshot()` | List all entries as `ModuleRetainerEntrySnapshot` |
+
+:::
 
 You typically do not call these directly -- `ModuleScope` manages them through retention strategies.
 
@@ -181,8 +215,11 @@ Modularity.enableDebugLogging();
 
 ## Runtime Constraints
 
+::: warning Immutability Assertions
 - **retentionPolicy cannot change** at runtime. An assertion fires in debug mode if you rebuild a `ModuleScope` with a different policy. Create a new widget instance instead.
 - **retentionKey cannot change** at runtime. Same assertion behavior.
+:::
+
 - **Nested key scoping** is automatic. Child modules receive the parent's key through `_RetentionKeyScope`, so derived keys include the parent namespace.
 
 ## FAQ

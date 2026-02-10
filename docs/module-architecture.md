@@ -2,6 +2,19 @@
 
 Visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and `submodules` vs `imports`.
 
+## Initialization Flow
+
+```mermaid
+flowchart TB
+    A[configure args] --> B[resolve imports]
+    B --> C[validate expects]
+    C --> D[binds - private scope]
+    D --> E[apply overrides]
+    E --> F[exports - public scope]
+    F --> G[seal public scope]
+    G --> H[onInit]
+```
+
 ## Private vs Public Dependencies
 
 Each module has two scopes managed by `ExportableBinder`:
@@ -29,8 +42,19 @@ class NetworkModule extends Module {
 
 After `exports()` completes, the public scope is **sealed**. Further export registrations throw `ModuleConfigurationException`.
 
-::: tip
+::: info Scope visibility
 When module A imports module B, only B's `exports()` types are visible to A. Everything in B's `binds()` stays private.
+
+```mermaid
+flowchart LR
+    subgraph Module
+        direction TB
+        Private[Private Scope<br/>binds]
+        Public[Public Scope<br/>exports]
+    end
+    Importer -->|get| Public
+    Importer -.->|cannot access| Private
+```
 :::
 
 ## Module Imports
@@ -65,6 +89,18 @@ class ProfileModule extends Module {
 ### Diamond Dependencies
 
 If B and C both import D, only one D controller is created. Both share it from the global registry.
+
+```mermaid
+flowchart TB
+    App --> Auth & Data
+    Auth --> Network
+    Data --> Network
+    style Network fill:#f9f,stroke:#333
+```
+
+::: tip
+`Network` is initialized once. The second import awaits the already-running initialization and reuses the same controller.
+:::
 
 ## Parent Scope Chaining
 
@@ -164,9 +200,11 @@ Full lifecycle order:
 configure(args) -> imports resolved -> expects validated -> binds() -> exports() -> onInit()
 ```
 
-If the wrong argument type is passed, `ModuleController` wraps the `TypeError` in a `ModuleLifecycleException`.
+If the wrong argument type is passed, `ModuleController` wraps the error in a `ModuleLifecycleException`.
 
 ## Submodules vs Imports
+
+::: details Submodules vs Imports comparison
 
 | | `imports` | `submodules` |
 |--|-----------|-------------|
@@ -174,6 +212,8 @@ If the wrong argument type is passed, `ModuleController` wraps the `TypeError` i
 | **Initialization** | Resolved by `GraphResolver` | Not initialized by the framework |
 | **Binder access** | Public exports injected into importer | No binder connection |
 | **Use case** | Need types from another module | Document feature composition for tooling |
+
+:::
 
 ### imports -- runtime DI
 

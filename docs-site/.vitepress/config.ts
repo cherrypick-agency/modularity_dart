@@ -1,10 +1,11 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 import { apiSidebar } from './generated/api-sidebar'
 import { guideSidebar } from './generated/guide-sidebar'
 import { dartpadPlugin } from './theme/plugins/dartpad'
 import { apiLinkerPlugin } from './theme/plugins/api-linker'
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: 'Modularity',
   description: 'Modular architecture framework for Dart & Flutter',
   base: '/modularity_dart/',
@@ -14,6 +15,9 @@ export default defineConfig({
       md.use(dartpadPlugin)
       md.use(apiLinkerPlugin)
     },
+  },
+  mermaid: {
+    theme: 'neutral',
   },
   themeConfig: {
     search: {
@@ -29,4 +33,4 @@ export default defineConfig({
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/cherrypick-agency/modularity_dart' }],
   },
-})
+}))
