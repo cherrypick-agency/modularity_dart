@@ -18,4 +18,6 @@ Welcome to the **Modularity** documentation.
 - [Hot Reload](./modularity_workspace/hot-reload.md) — How hot reload works with modules
 - [Dependency Overrides](./modularity_workspace/dependency-overrides.md) — Replace, extend, and intercept registrations
 - [Injectable Integration](./modularity_workspace/injectable-integration.md) — Integration with injectable/get_it
+- [Routing Integration](./modularity_workspace/routing-integration.md) — GoRouter, AutoRoute, retention policies
+- [State Management](./modularity_workspace/state-management.md) — Bloc, Riverpod, MobX integration
 - [Testing Modules](./modularity_workspace/testing-modules.md) — Unit tests, widget tests, overrides

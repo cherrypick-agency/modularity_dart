@@ -215,3 +215,32 @@ class AppModule extends Module {
 Submodules are consumed by `modularity_cli` tools (`ModuleBindingsAnalyzer`, `GraphVisualizer`) for dependency graph visualization. They should use `Configurable` instead of constructor arguments so tooling can instantiate them cleanly.
 
 A module can appear in both `imports` and `submodules` if needed.
+
+## Visualizing the Module Graph
+
+The `modularity_cli` package can generate interactive dependency graphs from your module tree. `GraphVisualizer` analyzes `binds()`, `exports()`, `imports`, and `submodules` using a `RecordingBinder` (no real instances are created) and opens the result in a browser.
+
+```dart
+import 'package:modularity_cli/modularity_cli.dart';
+
+void main() async {
+  // Static Graphviz DOT diagram (default)
+  await GraphVisualizer.visualize(AppModule());
+
+  // Interactive AntV G6 diagram with drag, zoom, and tooltips
+  await GraphVisualizer.visualize(AppModule(), renderer: GraphRenderer.g6);
+}
+```
+
+Each node shows the module name, its public/private registrations with their kind (singleton, factory, instance), and any `expects` declarations. Edges are labeled `imports` (dashed) or `owns` (diamond) for submodules.
+
+Add `modularity_cli` as a dev dependency and run the script with `dart run`:
+
+```yaml
+dev_dependencies:
+  modularity_cli: ^0.2.0
+```
+
+```bash
+dart run tool/visualize_graph.dart
+```
