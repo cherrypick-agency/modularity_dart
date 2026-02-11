@@ -6,21 +6,21 @@ const { frontmatter } = useData()
 const route = useRoute()
 
 const parts = computed(() => {
-  // Extract package from path: /api/modularity_core/Foo -> modularity_core
   const match = route.path.match(/\/api\/([^/]+)\//)
   if (!match) return null
 
-  const pkg = match[1]
+  const dirName = match[1]
+  const library = frontmatter.value.library ?? dirName
   const category = frontmatter.value.category || 'Classes'
   const title = frontmatter.value.title || ''
 
-  return { pkg, category, title }
+  return { dirName, library, category, title }
 })
 </script>
 
 <template>
   <div v-if="parts" class="api-breadcrumb">
-    <a :href="withBase(`/api/${parts.pkg}/`)">{{ parts.pkg }}</a>
+    <a :href="withBase(`/api/${parts.dirName}/`)">{{ parts.library }}</a>
     <span class="separator"> › </span>
     <span>{{ parts.category }}</span>
     <span class="separator"> › </span>
