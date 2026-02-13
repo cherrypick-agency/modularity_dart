@@ -82,6 +82,12 @@ class ModuleScope<T extends Module> extends StatefulWidget {
   final Widget child;
 
   /// Arguments passed to [Configurable.configure] if module implements it.
+  ///
+  /// Typed as `dynamic` because [ModuleScope] only has one type parameter [T]
+  /// (the module type). The actual args type is enforced by the [Configurable]
+  /// mixin at the module level — `Configurable<A>.configure(A args)` provides
+  /// compile-time safety where it matters. Adding a second type parameter here
+  /// would degrade ergonomics for the common case (non-configurable modules).
   final dynamic args;
 
   /// Builder for loading state UI.
