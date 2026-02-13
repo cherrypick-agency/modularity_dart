@@ -194,8 +194,8 @@ class GetItBinder implements ExportableBinder, DisposableBinder {
     _privateTypes.clear();
     _privateDisposers.clear();
     // Reset both scopes
-    await _privateScope.reset(dispose: false);
-    await _publicScope.reset(dispose: false);
+    await _privateScope.reset(dispose: true);
+    await _publicScope.reset(dispose: true);
   }
 
   /// Text dump describing current registrations.

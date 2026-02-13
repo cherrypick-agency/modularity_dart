@@ -141,7 +141,7 @@ GetIt initAuthDeps(
   String? environment,
   EnvironmentFilter? environmentFilter,
 }) =>
-    $initGetIt(
+    $initAuthDeps(
       getIt,
       environment: environment,
       environmentFilter: environmentFilter,

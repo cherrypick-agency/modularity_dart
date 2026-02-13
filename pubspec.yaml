@@ -15,13 +15,16 @@ workspace:
   - packages/modularity_test
   - packages/test_utils
   - packages/adapters/modularity_get_it
-  # TODO: вернуть когда abstract_http_client будет опубликован на pub.dev
+  # TODO: re-enable when abstract_http_client is published on pub.dev
   # - packages/shared_modules/modularity_http_client
   - packages/flutter/example
   - packages/modularity_injectable/example
   - examples/complex_app
   - examples/complex_mobx
-  - examples/example_auto_route
+  # TODO: re-enable when auto_route_generator updates to a version compatible with analyzer >=8.0.0
+  # auto_route_generator ^9.0.0 requires analyzer <8.0.0, which conflicts with flutter_test
+  # Needs auto_route_generator >=10.3.0 (requires auto_route >=10.3.0 with breaking changes)
+  # - examples/example_auto_route
   - examples/example_bloc
   - examples/example_go_router
   - examples/example_riverpod

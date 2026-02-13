@@ -9,7 +9,9 @@ export default withMermaid(defineConfig({
   title: 'Modularity',
   description: 'Modular architecture framework for Dart & Flutter',
   base: '/modularity_dart/',
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: [
+    /\/api\//,
+  ],
   markdown: {
     config: (md) => {
       md.use(dartpadPlugin)

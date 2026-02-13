@@ -377,8 +377,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late final ProductStore productStore;
-  late final CartStore cartStore;
+  late ProductStore productStore;
+  late CartStore cartStore;
 
   @override
   void didChangeDependencies() {

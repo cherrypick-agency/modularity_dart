@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'package:modularity_contracts/modularity_contracts.dart';
 
 import 'browser_opener.dart';
@@ -61,7 +60,9 @@ class GraphVisualizer {
   }
 
   /// Builds structured graph data from module tree.
-  @visibleForTesting
+  ///
+  /// Useful for CI pipelines and programmatic access to the dependency graph
+  /// without rendering it in a browser.
   static ModuleGraphData buildGraphData(Module rootModule) {
     final nodes = <ModuleNode>[];
     final edges = <ModuleEdge>[];
@@ -124,7 +125,9 @@ class GraphVisualizer {
   }
 
   /// Generate a Graphviz DOT string representing the module tree of [rootModule].
-  @visibleForTesting
+  ///
+  /// Returns a DOT-format string suitable for rendering with Graphviz or
+  /// embedding in CI reports.
   static String generateDot(Module rootModule) {
     final buffer = StringBuffer()
       ..writeln('digraph Modules {')

@@ -71,7 +71,7 @@ class ModularityRoot extends InheritedWidget {
     final root = context.dependOnInheritedWidgetOfExactType<ModularityRoot>();
     if (root == null) {
       throw ModuleConfigurationException(
-        'ModularityRoot not found. Please wrap your app in ModularityRoot (or ModularApp).',
+        'ModularityRoot not found. Please wrap your app in ModularityRoot.',
       );
     }
     return root;

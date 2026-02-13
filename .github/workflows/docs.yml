@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: docs-site/package-lock.json
 
       - name: Install dartdoc-vitepress
-        run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git
+        run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git --git-ref 2a693eb7ce5633e79d91e5593e8e185ebe2fd9f2
 
       # Generate API docs and sidebar files from Dart source code
       - name: Generate API docs

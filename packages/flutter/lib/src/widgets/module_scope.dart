@@ -290,6 +290,12 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   }
 
   @override
+  void reassemble() {
+    super.reassemble();
+    _controller?.hotReload();
+  }
+
+  @override
   void dispose() {
     _statusSub?.cancel();
     _statusSub = null;

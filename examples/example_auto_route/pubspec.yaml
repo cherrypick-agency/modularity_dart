@@ -6,7 +6,10 @@ version: 0.0.1
 environment:
   sdk: '>=3.9.0 <4.0.0'
 
-resolution: workspace
+# Temporarily excluded from workspace due to auto_route_generator ^9.0.0
+# requiring analyzer <8.0.0, which conflicts with flutter_test (analyzer >=8.0.0).
+# Will be re-included when auto_route_generator updates to support analyzer >=8.0.0.
+# resolution: workspace
 
 dependencies:
   flutter:

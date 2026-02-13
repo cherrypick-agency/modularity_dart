@@ -293,10 +293,11 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
     disposeNow();
   }
 
-  /// Dispose the controller when the route is removed without popping.
-  void didRemove() {
-    disposeNow();
-  }
+  // Note: Route removal (Navigator.removeRoute) is handled by RouteObserver
+  // unsubscription in onStateDispose(). Flutter's RouteAware mixin does not
+  // include a didRemove() callback, so route removal cannot be observed
+  // through the RouteObserver/RouteAware mechanism. The didPop() callback
+  // covers the standard pop navigation case.
 }
 
 /// Create the appropriate [ModuleRetentionStrategy] for the given [policy]
