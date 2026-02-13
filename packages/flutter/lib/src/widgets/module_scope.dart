@@ -326,88 +326,31 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       return const SizedBox.shrink();
     }
 
-    final content = ModuleProvider(
-      controller: controller,
-      child: _buildContent(),
-    );
-
-    final key = _retentionKey;
-    if (key == null) {
-      return content;
-    }
-
-    return _RetentionKeyScope(value: key, child: content);
-  }
-
-  Widget _buildContent() {
+    final Widget content;
     switch (_status) {
       case ModuleStatus.initial:
       case ModuleStatus.loading:
-        return _buildLoading();
-
+        content = _ModuleScopeLoading(builder: widget.loadingBuilder);
       case ModuleStatus.error:
-        return _buildError();
-
+        content = _ModuleScopeError(
+          error: _error,
+          onRetry: _retry,
+          builder: widget.errorBuilder,
+        );
       case ModuleStatus.loaded:
-        return widget.child;
-
+        content = widget.child;
       case ModuleStatus.disposed:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildLoading() {
-    if (widget.loadingBuilder != null) {
-      return widget.loadingBuilder!(context);
+        content = const SizedBox.shrink();
     }
 
-    final defaultBuilder = ModularityRoot.defaultLoadingBuilderOf(context);
-    if (defaultBuilder != null) {
-      return defaultBuilder(context);
+    final provider = ModuleProvider(controller: controller, child: content);
+
+    final key = _retentionKey;
+    if (key == null) {
+      return provider;
     }
 
-    // Agnostic Default
-    return const Center(
-      child: Text('Loading...', textDirection: TextDirection.ltr),
-    );
-  }
-
-  Widget _buildError() {
-    if (widget.errorBuilder != null) {
-      return widget.errorBuilder!(context, _error, _retry);
-    }
-
-    final defaultBuilder = ModularityRoot.defaultErrorBuilderOf(context);
-    if (defaultBuilder != null) {
-      return defaultBuilder(context, _error, _retry);
-    }
-
-    // Agnostic Default
-    return Center(
-      child: SingleChildScrollView(
-        // Add scroll to prevent overflow
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Module Init Failed', textDirection: TextDirection.ltr),
-            const SizedBox(height: 8),
-            Text(_error.toString(), textDirection: TextDirection.ltr),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _retry,
-              child: const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(
-                  'Retry',
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(color: Color(0xFF0000FF)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _RetentionKeyScope(value: key, child: provider);
   }
 
   void _retry() {
@@ -429,6 +372,78 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     });
 
     _ensureController();
+  }
+}
+
+class _ModuleScopeLoading extends StatelessWidget {
+  const _ModuleScopeLoading({this.builder});
+
+  final WidgetBuilder? builder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (builder != null) {
+      return builder!(context);
+    }
+
+    final defaultBuilder = ModularityRoot.defaultLoadingBuilderOf(context);
+    if (defaultBuilder != null) {
+      return defaultBuilder(context);
+    }
+
+    return const Center(
+      child: Text('Loading...', textDirection: TextDirection.ltr),
+    );
+  }
+}
+
+class _ModuleScopeError extends StatelessWidget {
+  const _ModuleScopeError({
+    required this.error,
+    required this.onRetry,
+    this.builder,
+  });
+
+  final Object? error;
+  final VoidCallback onRetry;
+  final Widget Function(BuildContext, Object? error, VoidCallback retry)?
+  builder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (builder != null) {
+      return builder!(context, error, onRetry);
+    }
+
+    final defaultBuilder = ModularityRoot.defaultErrorBuilderOf(context);
+    if (defaultBuilder != null) {
+      return defaultBuilder(context, error, onRetry);
+    }
+
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Module Init Failed', textDirection: TextDirection.ltr),
+            const SizedBox(height: 8),
+            Text(error.toString(), textDirection: TextDirection.ltr),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: onRetry,
+              child: const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Retry',
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(color: Color(0xFF0000FF)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
