@@ -6,6 +6,7 @@ import 'vitepress-codeblock-collapse/style.css'
 import { useMermaidZoom } from 'vitepress-mermaid-zoom'
 import 'vitepress-mermaid-zoom/style.css'
 import './custom.css'
+import '../generated/api-styles.css'
 import DartPad from './components/DartPad.vue'
 import ApiBreadcrumb from './components/ApiBreadcrumb.vue'
 

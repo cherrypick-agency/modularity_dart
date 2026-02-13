@@ -1,18 +1,29 @@
-# Module Architecture
+# 🏗️ Module Architecture
 
-Visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and the difference between `submodules` and `imports`.
+Visibility control, imports, parent scope chaining, the `expects` contract, configurable modules, and `submodules` vs `imports`.
 
-## Module Structure
+## Initialization Flow
+
+```mermaid
+flowchart TB
+    A[configure args] --> B[resolve imports]
+    B --> C[validate expects]
+    C --> D[binds - private scope]
+    D --> E[apply overrides]
+    E --> F[exports - public scope]
+    F --> G[seal public scope]
+    G --> H[onInit]
+```
+
+## Private vs Public Dependencies
 
 Each module has two scopes managed by `ExportableBinder`:
-
-- `binds()` registers **private** dependencies -- internal implementation details invisible to other modules.
-- `exports()` registers **public** dependencies -- the only surface importers can access.
 
 ```dart
 class NetworkModule extends Module {
   @override
   void binds(Binder i) {
+    // Private -- invisible to importers
     i.registerLazySingleton<HttpInterceptor>(() => LoggingInterceptor());
     i.registerLazySingleton<HttpClient>(
       () => HttpClient(interceptor: i.get<HttpInterceptor>()),
@@ -21,6 +32,7 @@ class NetworkModule extends Module {
 
   @override
   void exports(Binder i) {
+    // Public -- the only surface importers can see
     i.registerLazySingleton<ApiClient>(
       () => ApiClient(http: i.get<HttpClient>()),
     );
@@ -29,6 +41,9 @@ class NetworkModule extends Module {
 ```
 
 After `exports()` completes, the public scope is **sealed**. Further export registrations throw `ModuleConfigurationException`.
+
+::: info Scope visibility
+When module A imports module B, only B's `exports()` types are visible to A. Everything in B's `binds()` stays private.
 
 ```mermaid
 flowchart LR
@@ -40,18 +55,9 @@ flowchart LR
     Importer -->|get| Public
     Importer -.->|cannot access| Private
 ```
+:::
 
-## Visibility Rules
-
-| Caller | `binds()` types | `exports()` types | Parent scope |
-|--------|:-:|:-:|:-:|
-| Module itself | yes | yes | yes |
-| Importing module | no | yes | no |
-| Child (nested) `ModuleScope` | no | no | yes (via `parent<T>()`) |
-
-The internal `binds()` of a module is never exposed outside its own scope. `exports()` is only visible through the `imports` mechanism. Parent scope is accessed implicitly through the widget tree.
-
-## Imports
+## Module Imports
 
 Override the `imports` getter to declare runtime dependencies. `GraphResolver` initializes all imports **concurrently** before calling the importing module's `binds()`.
 
@@ -92,9 +98,11 @@ flowchart TB
     style Network fill:#f9f,stroke:#333
 ```
 
+::: tip
 `Network` is initialized once. The second import awaits the already-running initialization and reuses the same controller.
+:::
 
-## Parent Scope
+## Parent Scope Chaining
 
 Nested `ModuleScope` widgets form an implicit parent chain. The child's `SimpleBinder` receives the parent binder as a fallback.
 
@@ -123,7 +131,7 @@ class FeatureModule extends Module {
 
 Use `parent<T>()` when you need to **skip** local and import scopes explicitly -- for example, to avoid shadowing a type that exists in both scopes.
 
-## expects
+## The `expects` Contract
 
 Declare types that **must** exist before the module initializes. Missing types fail fast with `ModuleConfigurationException` instead of a late `DependencyNotFoundException`.
 
@@ -152,7 +160,7 @@ class OrderModule extends Module {
 `expects` is checked **after** imports are resolved but **before** `binds()` runs. The check uses `binder.contains(type)`, which searches imports + parent. Expected types can come from either source.
 :::
 
-Use `expects` when a module depends on types provided by a **parent scope** rather than its own imports. Types from imports don't need to be listed in `expects` -- they are guaranteed by the import resolution.
+Use `expects` when a module depends on types provided by a **parent scope** rather than its own imports.
 
 ## Configurable Modules
 
@@ -189,21 +197,44 @@ ModuleScope<UserProfileModule>(
 Full lifecycle order:
 
 ```
-configure(args) -> imports resolved -> expects validated -> binds() -> overrides -> exports() -> seal -> onInit()
+configure(args) -> imports resolved -> expects validated -> binds() -> exports() -> onInit()
 ```
 
 If the wrong argument type is passed, `ModuleController` wraps the error in a `ModuleLifecycleException`.
 
-## Submodules
+## Submodules vs Imports
 
-`submodules` is a separate concept from `imports`. It exists for **static analysis and visualization only** -- the framework does not initialize submodules at runtime.
+::: details Submodules vs Imports comparison
 
 | | `imports` | `submodules` |
 |--|-----------|-------------|
 | **Purpose** | Runtime DI | Static analysis and visualization |
 | **Initialization** | Resolved by `GraphResolver` | Not initialized by the framework |
 | **Binder access** | Public exports injected into importer | No binder connection |
-| **Use case** | Need types from another module | Document feature composition for CLI tooling |
+| **Use case** | Need types from another module | Document feature composition for tooling |
+
+:::
+
+### imports -- runtime DI
+
+```dart
+class CheckoutModule extends Module {
+  @override
+  List<Module> get imports => [CartModule(), PaymentModule()];
+
+  @override
+  void binds(Binder i) {
+    i.registerFactory<CheckoutService>(
+      () => CheckoutService(
+        cart: i.get<CartService>(),
+        payment: i.get<PaymentService>(),
+      ),
+    );
+  }
+}
+```
+
+### submodules -- structural composition
 
 ```dart
 class AppModule extends Module {
@@ -225,116 +256,25 @@ Submodules are consumed by `modularity_cli` tools (`ModuleBindingsAnalyzer`, `Gr
 
 A module can appear in both `imports` and `submodules` if needed.
 
-## Architecture Example
-
-A typical e-commerce app with shared infrastructure and feature modules:
-
-```dart
-class AppModule extends Module {
-  @override
-  List<Module> get imports => [NetworkModule(), AuthModule()];
-
-  @override
-  void binds(Binder i) {
-    i.registerSingleton<AppConfig>(AppConfig());
-  }
-
-  @override
-  void exports(Binder i) {
-    i.registerLazySingleton<AppAnalytics>(
-      () => AppAnalytics(config: i.get<AppConfig>()),
-    );
-  }
-}
-
-class CatalogModule extends Module {
-  @override
-  List<Module> get imports => [NetworkModule()];
-
-  @override
-  List<Type> get expects => [AuthService];
-
-  @override
-  void binds(Binder i) {
-    i.registerLazySingleton<CatalogRepository>(
-      () => CatalogRepository(api: i.get<ApiClient>()),
-    );
-  }
-
-  @override
-  void exports(Binder i) {
-    i.registerLazySingleton<CatalogService>(
-      () => CatalogService(repo: i.get<CatalogRepository>()),
-    );
-  }
-}
-
-class CartModule extends Module {
-  @override
-  List<Module> get imports => [CatalogModule()];
-
-  @override
-  List<Type> get expects => [AuthService];
-
-  @override
-  void binds(Binder i) {
-    i.registerFactory<CartService>(
-      () => CartService(
-        catalog: i.get<CatalogService>(),
-        auth: i.get<AuthService>(),
-      ),
-    );
-  }
-}
-```
-
-```mermaid
-flowchart TB
-    App[AppModule] --> Network[NetworkModule]
-    App --> Auth[AuthModule]
-    Catalog[CatalogModule] --> Network
-    Catalog -.->|expects| Auth
-    Cart[CartModule] --> Catalog
-    Cart -.->|expects| Auth
-    style Network fill:#f9f,stroke:#333
-    style Auth fill:#bbf,stroke:#333
-```
-
-Widget tree:
-
-```dart
-final observer = RouteObserver<ModalRoute<dynamic>>();
-
-ModularityRoot(
-  observer: observer,
-  child: MaterialApp(
-    navigatorObservers: [observer],
-    home: ModuleScope<AppModule>(
-      module: AppModule(),
-      child: CatalogPage(),
-    ),
-  ),
-)
-```
-
-Nested `ModuleScope<CatalogModule>` and `ModuleScope<CartModule>` get `AuthService` from the parent `AppModule` scope via the resolution chain.
-
 ## Visualizing the Module Graph
 
-The `modularity_cli` package generates interactive dependency graphs from your module tree:
+The `modularity_cli` package can generate interactive dependency graphs from your module tree. `GraphVisualizer` analyzes `binds()`, `exports()`, `imports`, and `submodules` using a `RecordingBinder` (no real instances are created) and opens the result in a browser.
 
 ```dart
 import 'package:modularity_cli/modularity_cli.dart';
 
 void main() async {
+  // Static Graphviz DOT diagram (default)
   await GraphVisualizer.visualize(AppModule());
 
-  // Interactive diagram with drag, zoom, and tooltips
+  // Interactive AntV G6 diagram with drag, zoom, and tooltips
   await GraphVisualizer.visualize(AppModule(), renderer: GraphRenderer.g6);
 }
 ```
 
-Add `modularity_cli` as a dev dependency:
+Each node shows the module name, its public/private registrations with their kind (singleton, factory, instance), and any `expects` declarations. Edges are labeled `imports` (dashed) or `owns` (diamond) for submodules.
+
+Add `modularity_cli` as a dev dependency and run the script with `dart run`:
 
 ```yaml
 dev_dependencies:

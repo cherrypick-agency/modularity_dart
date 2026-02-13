@@ -1,17 +1,29 @@
-# Testing Modules
+# 🧪 Testing Modules
 
-Test Modularity modules at three levels: pure Dart unit tests with `testModule()`, Flutter widget tests with `ModuleScope`, and manual `ModuleController` tests for lifecycle verification.
+Test Modularity modules with `modularity_test` for unit tests and `ModuleScope` for widget tests.
 
-## Unit Testing (Pure Dart)
+## Choosing the Right Test Type
 
-The `modularity_test` package provides `testModule()` -- it runs the full module lifecycle (resolve imports, binds, overrides, exports, onInit) and gives you a `TestBinder` that records all registrations and resolutions. The controller is automatically disposed after the body runs.
+```mermaid
+flowchart TB
+    A{What to test?} -->|Module logic| B[Unit Test<br/>testModule]
+    A -->|Widget + Module| C[Widget Test<br/>ModularityRoot + ModuleScope]
+    A -->|Error handling| D[Error Scenarios<br/>controller.initialize]
+    A -->|Lifecycle| E[Manual Controller<br/>ModuleController]
+```
+
+## Setup
 
 ```yaml
 dev_dependencies:
   modularity_test:
-    path: ../packages/modularity_test
+    path: ../packages/modularity_test  # or published version
   test: ^1.25.0
 ```
+
+## Unit Testing with `testModule()`
+
+`testModule()` runs the full module lifecycle (resolve imports, binds, overrides, exports, onInit) and provides a `TestBinder` that records all registrations and resolutions. The controller is automatically disposed after the body runs.
 
 ```dart
 import 'package:modularity_core/modularity_core.dart';
@@ -42,6 +54,7 @@ test('AuthModule registers expected dependencies', () async {
 
 ### TestBinder API
 
+::: info TestBinder reference
 | Method | Description |
 |--------|-------------|
 | `hasSingleton<T>()` | Was `T` registered via `registerLazySingleton`? |
@@ -52,43 +65,11 @@ test('AuthModule registers expected dependencies', () async {
 | `registeredFactories` | All types registered as factories |
 | `registeredInstances` | All types registered as eager instances |
 | `resolvedTypes` | All types that were resolved |
+:::
 
-## Widget Testing
+## Overriding Dependencies in Tests
 
-Wrap widgets in `ModularityRoot` + `ModuleScope` to test the full integration:
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:modularity_flutter/modularity_flutter.dart';
-
-testWidgets('ProfilePage shows user name', (tester) async {
-  await tester.pumpWidget(
-    ModularityRoot(
-      child: MaterialApp(
-        home: ModuleScope<ProfileModule>(
-          module: ProfileModule(),
-          overrides: (binder) {
-            binder.registerLazySingleton<UserService>(
-              () => FakeUserService(),
-            );
-          },
-          child: const ProfilePage(),
-        ),
-      ),
-    ),
-  );
-
-  await tester.pumpAndSettle();
-  expect(find.text('Test User'), findsOneWidget);
-});
-```
-
-## Dependency Overrides
-
-### Simple Overrides
-
-Pass `overrides` to `testModule()` to replace real implementations with fakes:
+Pass `overrides` to replace real implementations with fakes:
 
 ```dart
 test('override HttpClient with fake', () async {
@@ -104,9 +85,11 @@ test('override HttpClient with fake', () async {
 });
 ```
 
-### ModuleOverrideScope
+::: tip
+Use `overrideScope` when you need to override bindings in deeply nested imported modules. It lets you target specific child modules without affecting the rest of the dependency tree.
+:::
 
-Use `overrideScope` when you need to override bindings inside **imported** modules. It lets you target specific child modules without affecting the rest of the dependency tree.
+For modules with imports, use `overrideScope` to target specific child modules:
 
 ```dart
 test('override imported module bindings', () async {
@@ -130,14 +113,41 @@ test('override imported module bindings', () async {
 });
 ```
 
-Override scopes work the same way in widget tests:
+## Widget Testing
+
+Wrap widgets in `ModularityRoot` + `ModuleScope`:
+
+```dart
+testWidgets('ProfilePage shows user name', (tester) async {
+  await tester.pumpWidget(
+    ModularityRoot(
+      child: MaterialApp(
+        home: ModuleScope(
+          module: ProfileModule(),
+          overrides: (binder) {
+            binder.registerLazySingleton<UserService>(
+              () => FakeUserService(),
+            );
+          },
+          child: const ProfilePage(),
+        ),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
+  expect(find.text('Test User'), findsOneWidget);
+});
+```
+
+### Override scopes in widget tests
 
 ```dart
 testWidgets('override imported module in widget tree', (tester) async {
   await tester.pumpWidget(
     ModularityRoot(
       child: MaterialApp(
-        home: ModuleScope<AppModule>(
+        home: ModuleScope(
           module: AppModule(),
           overrideScope: ModuleOverrideScope(
             children: {
@@ -161,42 +171,15 @@ testWidgets('override imported module in widget tree', (tester) async {
 });
 ```
 
-For details on override timing and composition, see [Dependency Overrides](./dependency-overrides.md).
+## Testing Error Scenarios
 
-## Testing Async Initialization
-
-`testModule()` awaits the full lifecycle including `onInit()`:
-
-```dart
-class CacheModule extends Module {
-  bool initialized = false;
-
-  @override
-  void binds(Binder i) {
-    i.registerLazySingleton<CacheService>(() => CacheService());
-  }
-
-  @override
-  Future<void> onInit() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    initialized = true;
-  }
-}
-
-test('onInit completes before test body', () async {
-  await testModule(CacheModule(), (module, binder) {
-    expect(module.initialized, isTrue);
-  });
-});
-```
-
-## Testing Error States
+::: details Error Scenarios (advanced)
 
 ### Circular dependency detection
 
 ```dart
 test('circular imports throw CircularDependencyException', () async {
-  final controller = ModuleController(ModuleA());
+  final controller = ModuleController(ModuleA()); // A imports B, B imports A
 
   await expectLater(
     () => controller.initialize(<ModuleRegistryKey, ModuleController>{}),
@@ -205,11 +188,11 @@ test('circular imports throw CircularDependencyException', () async {
 });
 ```
 
-### Missing expects validation
+### Missing `expects` validation
 
 ```dart
 test('missing expects throw ModuleConfigurationException', () async {
-  final controller = ModuleController(StrictModule());
+  final controller = ModuleController(StrictModule()); // expects [AuthService]
 
   await expectLater(
     () => controller.initialize(<ModuleRegistryKey, ModuleController>{}),
@@ -227,8 +210,8 @@ testWidgets('retry recovers from init failure', (tester) async {
   await tester.pumpWidget(
     ModularityRoot(
       child: MaterialApp(
-        home: ModuleScope<FlakyModule>(
-          module: FlakyModule(),
+        home: ModuleScope(
+          module: FlakyModule(), // throws on first attempt
           child: const Text('Success'),
         ),
       ),
@@ -244,59 +227,17 @@ testWidgets('retry recovers from init failure', (tester) async {
 });
 ```
 
-## Mocking
+:::
 
-Modularity works with any mocking library. Use `mocktail` or `mockito` to create fakes and inject them via overrides.
+## Testing Async `onInit`
 
-### With mocktail
-
-```dart
-import 'package:mocktail/mocktail.dart';
-
-class MockAuthService extends Mock implements AuthService {}
-
-test('module uses mocked auth service', () async {
-  final mockAuth = MockAuthService();
-  when(() => mockAuth.currentUser).thenReturn(User(name: 'Test'));
-
-  await testModule(
-    ProfileModule(),
-    overrides: (binder) {
-      binder.registerSingleton<AuthService>(mockAuth);
-    },
-    (module, binder) {
-      final profile = binder.get<ProfileService>();
-      expect(profile.userName, equals('Test'));
-      verify(() => mockAuth.currentUser).called(1);
-    },
-  );
-});
-```
-
-### With simple fakes
-
-For simple cases, a hand-written fake is often clearer than a mock:
+`testModule()` awaits the full lifecycle including `onInit()`:
 
 ```dart
-class FakeAuthService implements AuthService {
-  @override
-  User get currentUser => User(name: 'Fake User');
-
-  @override
-  Future<void> login() async {}
-}
-
-test('module with fake auth', () async {
-  await testModule(
-    ProfileModule(),
-    overrides: (binder) {
-      binder.registerSingleton<AuthService>(FakeAuthService());
-    },
-    (module, binder) {
-      final profile = binder.get<ProfileService>();
-      expect(profile.userName, equals('Fake User'));
-    },
-  );
+test('onInit completes before test body', () async {
+  await testModule(CacheModule(), (module, binder) {
+    expect(module.initialized, isTrue); // set in async onInit()
+  });
 });
 ```
 
@@ -309,7 +250,7 @@ test('manual controller lifecycle', () async {
   final controller = ModuleController(MyModule());
 
   await controller.initialize(<ModuleRegistryKey, ModuleController>{});
-  expect(controller.currentStatus, equals(ModuleStatus.loaded));
+  // ... assertions ...
 
   await controller.dispose();
   expect(controller.currentStatus, equals(ModuleStatus.disposed));
