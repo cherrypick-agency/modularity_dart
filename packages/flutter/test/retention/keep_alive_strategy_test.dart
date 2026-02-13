@@ -20,6 +20,8 @@ class LifecycleModule extends Module {
   }
 }
 
+final _observer = RouteObserver<ModalRoute<dynamic>>();
+
 Widget _buildHost({
   required bool showModule,
   required LifecycleModule module,
@@ -27,9 +29,10 @@ Widget _buildHost({
   ModuleRetentionPolicy policy = ModuleRetentionPolicy.keepAlive,
 }) {
   return ModularityRoot(
+    observer: _observer,
     retainer: retainer,
     child: MaterialApp(
-      navigatorObservers: [Modularity.observer],
+      navigatorObservers: [_observer],
       home: showModule
           ? ModuleScope(
               module: module,
@@ -89,10 +92,11 @@ void main() {
 
       await tester.pumpWidget(
         ModularityRoot(
+          observer: _observer,
           retainer: retainer,
           child: MaterialApp(
             navigatorKey: navigatorKey,
-            navigatorObservers: [Modularity.observer],
+            navigatorObservers: [_observer],
             home: ModuleScope(
               module: module,
               retentionPolicy: ModuleRetentionPolicy.keepAlive,
@@ -149,9 +153,10 @@ void main() {
 
       await tester.pumpWidget(
         ModularityRoot(
+          observer: _observer,
           retainer: retainer,
           child: MaterialApp(
-            navigatorObservers: [Modularity.observer],
+            navigatorObservers: [_observer],
             home: Column(
               children: [
                 ModuleScope(
@@ -175,7 +180,6 @@ void main() {
 
       expect(moduleA.initCount, 1);
       expect(moduleB.initCount, 1);
-      // Two entries because different retention keys
       expect(retainer.debugSnapshot().length, 2);
     });
 
@@ -188,9 +192,10 @@ void main() {
 
       await tester.pumpWidget(
         ModularityRoot(
+          observer: _observer,
           retainer: retainer,
           child: MaterialApp(
-            navigatorObservers: [Modularity.observer],
+            navigatorObservers: [_observer],
             home: Column(
               children: [
                 ModuleScope(
@@ -215,12 +220,10 @@ void main() {
       final snapshot = retainer.debugSnapshot();
       expect(snapshot.length, 2);
 
-      // Evict first entry
       await tester.runAsync(() async {
         await retainer.evict(snapshot.first.key);
       });
 
-      // First module disposed, second still alive
       expect(module1.disposeCount, 1);
       expect(module2.disposeCount, 0);
       expect(retainer.debugSnapshot().length, 1);

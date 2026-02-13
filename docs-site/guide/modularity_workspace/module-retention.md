@@ -28,7 +28,7 @@ Use for: one-shot screens, dialogs, bottom sheets, widgets that must never share
 
 ### routeBound (Default)
 
-The controller lives as long as the enclosing `ModalRoute`. Disposal happens on `didPop` or `didRemove`. Internally, `RouteBoundRetentionStrategy` mixes in `RouteAware` and subscribes to `Modularity.observer`.
+The controller lives as long as the enclosing `ModalRoute`. Disposal happens on `didPop` or `didRemove`. Internally, `RouteBoundRetentionStrategy` mixes in `RouteAware` and subscribes to the `RouteObserver` provided by `ModularityRoot`.
 
 ```dart
 ModuleScope(
@@ -39,12 +39,17 @@ ModuleScope(
 ```
 
 ::: warning RouteObserver required
-`routeBound` requires `Modularity.observer` to be registered in your `MaterialApp`. Without it, route lifecycle events are not captured.
+`routeBound` requires a `RouteObserver` to be passed to both `ModularityRoot(observer: ...)` and `MaterialApp(navigatorObservers: [...])`. Without it, route lifecycle events are not captured.
 
 ```dart
-MaterialApp(
-  navigatorObservers: [Modularity.observer],
-  // ...
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
+ModularityRoot(
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    // ...
+  ),
 )
 ```
 :::
@@ -194,7 +199,10 @@ for (final entry in retainer.debugSnapshot()) {
 Enable lifecycle logging to trace retention events:
 
 ```dart
-Modularity.enableDebugLogging();
+ModularityRoot(
+  lifecycleLogger: ModularityRoot.defaultDebugLogger,
+  // ...
+)
 // Output:
 // [Modularity] CREATED ProfileModule key=12345678
 // [Modularity] REGISTERED ProfileModule key=12345678 {policy: keepAlive, refCount: 1}
@@ -204,7 +212,7 @@ Modularity.enableDebugLogging();
 
 ## Common Pitfalls
 
-- **Forgot `Modularity.observer`** -- `routeBound` silently skips route subscription if there is no enclosing `ModalRoute`. The controller will only dispose when `ModuleScope` is removed from the tree, not on route pop.
+- **Forgot the observer** -- `routeBound` silently skips route subscription if there is no enclosing `ModalRoute`. The controller will only dispose when `ModuleScope` is removed from the tree, not on route pop. Pass a `RouteObserver` to both `ModularityRoot(observer: ...)` and your `MaterialApp`.
 - **Changing policy at runtime** -- An assertion fires in debug mode. Create a new `ModuleScope` instance instead.
 - **Changing retentionKey at runtime** -- Same assertion. The key is fixed at first build.
 - **Same retentionKey + different overrideScope** -- The first scope's overrides win. Include scope identity in the key if you need override-aware caching.

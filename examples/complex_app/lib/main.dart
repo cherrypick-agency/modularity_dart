@@ -3,12 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
 import 'modules/home/home_module.dart';
 
-void main() {
-  // Enable lifecycle logging in debug mode
-  if (kDebugMode) {
-    Modularity.enableDebugLogging();
-  }
+final _observer = RouteObserver<ModalRoute<dynamic>>();
 
+void main() {
   runApp(const MyApp());
 }
 
@@ -18,11 +15,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: _observer,
+      lifecycleLogger: kDebugMode ? ModularityRoot.defaultDebugLogger : null,
       child: MaterialApp(
         title: 'Complex Modularity App',
-        navigatorObservers: [
-          Modularity.observer,
-        ], // Enable RouteBound retention
+        navigatorObservers: [_observer],
         theme: ThemeData(primarySwatch: Colors.blue),
         home: ModuleScope(module: HomeModule(), child: const HomePage()),
       ),

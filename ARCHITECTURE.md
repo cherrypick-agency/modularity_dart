@@ -168,14 +168,19 @@ ModuleScope(
 );
 ```
 
-For `routeBound`, you still need to connect `Modularity.observer`:
+For `routeBound`, you still need to create an observer and pass it to both `ModularityRoot` and the router:
 
 ```dart
 // main.dart
-MaterialApp(
-  navigatorObservers: [Modularity.observer],
-  // ...
-);
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
+ModularityRoot(
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    // ...
+  ),
+)
 ```
 
 - **Push:** creates a module and subscribes to the route observer.
@@ -206,12 +211,14 @@ ModuleScope(
 
 ### **6.2. Lifecycle Logging**
 
-For debugging retention behavior, use the built-in logger:
+For debugging retention behavior, pass a lifecycle logger to `ModularityRoot`:
 
 ```dart
 void main() {
-  Modularity.enableDebugLogging();
-  runApp(MyApp());
+  runApp(ModularityRoot(
+    lifecycleLogger: ModularityRoot.defaultDebugLogger,
+    child: MyApp(),
+  ));
 }
 ```
 
@@ -220,12 +227,15 @@ Events: `created`, `reused`, `registered`, `disposed`, `evicted`, `released`, `r
 For analytics/monitoring integration:
 
 ```dart
-Modularity.lifecycleLogger = (event, type, {retentionKey, details}) {
-  Sentry.addBreadcrumb(Breadcrumb(
-    message: 'Module ${event.name}: $type',
-    data: {'key': retentionKey?.toString(), ...?details},
-  ));
-};
+ModularityRoot(
+  lifecycleLogger: (event, type, {retentionKey, details}) {
+    Sentry.addBreadcrumb(Breadcrumb(
+      message: 'Module ${event.name}: $type',
+      data: {'key': retentionKey?.toString(), ...?details},
+    ));
+  },
+  child: MyApp(),
+)
 ```
 
 ## **7. Testing Strategy**
@@ -259,23 +269,33 @@ ModuleScope(
 
 ## **8. Routing Integration**
 
-Modularity integrates easily with popular routing packages. The main requirement is to connect `Modularity.observer`.
+Modularity integrates easily with popular routing packages. The main requirement is to create an observer and pass it to both `ModularityRoot(observer: ...)` and the router.
 
 ### **GoRouter**
 
 ```dart
-final router = GoRouter(
-  observers: [Modularity.observer],
-  routes: [
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => ModuleScope(
-        module: HomeModule(),
-        child: HomePage(),
+class AppRouter {
+  static final observer = RouteObserver<ModalRoute<dynamic>>();
+
+  static final router = GoRouter(
+    observers: [observer],
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => ModuleScope(
+          module: HomeModule(),
+          child: HomePage(),
+        ),
       ),
-    ),
-  ],
-);
+    ],
+  );
+}
+
+// main.dart
+runApp(ModularityRoot(
+  observer: AppRouter.observer,
+  child: MaterialApp.router(routerConfig: AppRouter.router),
+));
 ```
 
 ### **AutoRoute**
@@ -290,11 +310,15 @@ class AppRouter extends RootStackRouter {
 }
 
 // main.dart
-MaterialApp.router(
-  routerConfig: appRouter.config(
-    navigatorObservers: () => [Modularity.observer],
+runApp(ModularityRoot(
+  child: Builder(
+    builder: (context) => MaterialApp.router(
+      routerConfig: appRouter.config(
+        navigatorObservers: () => [ModularityRoot.observerOf(context)],
+      ),
+    ),
   ),
-);
+));
 
 // HomePage (Inside ModuleScope)
 @RoutePage()

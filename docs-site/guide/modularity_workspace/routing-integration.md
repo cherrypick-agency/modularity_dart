@@ -83,17 +83,17 @@ class SettingsModule extends Module {
 
 ## Observer Registration
 
-`Modularity.observer` is a `RouteObserver<ModalRoute>` that powers the `routeBound` retention policy. Register it with your router so module controllers dispose when their route is popped.
+`ModularityRoot` accepts an `observer` parameter -- a `RouteObserver<ModalRoute>` that powers the `routeBound` retention policy. Pass the same observer to both `ModularityRoot` and your router so module controllers dispose when their route is popped.
 
 ::: warning
-Without `Modularity.observer`, `routeBound` retention cannot detect route pops. Controllers will only dispose when the widget itself is unmounted. Always register the observer at the app level.
+Without a properly registered observer, `routeBound` retention cannot detect route pops. Controllers will only dispose when the widget itself is unmounted. Always register the observer at the app level.
 :::
 
 ## GoRouter
 
 ### App setup
 
-Place `ModularityRoot` and a root `ModuleScope` above the router. The `Builder` creates a context that already has access to `RootModule` dependencies:
+Place `ModularityRoot` and a root `ModuleScope` above the router. Pass the observer to both `ModularityRoot` and the router:
 
 ```dart
 class MyApp extends StatelessWidget {
@@ -102,6 +102,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: AppRouter.observer,
       child: ModuleScope(
         module: RootModule(),
         child: Builder(
@@ -124,7 +125,7 @@ Wrap the `builder` return value in a `ModuleScope`:
 ```dart
 final router = GoRouter(
   initialLocation: '/home',
-  observers: [Modularity.observer],
+  observers: [AppRouter.observer],
   routes: [
     GoRoute(
       path: '/login',
@@ -220,7 +221,7 @@ The `redirect` callback receives a `BuildContext` that sits below `ModularityRoo
 
 ### App setup
 
-With AutoRoute, the router object is created in the `Builder` callback so that resolved dependencies (like `AuthService`) can be passed to guards:
+With AutoRoute, the router object is created in the `Builder` callback so that resolved dependencies (like `AuthService`) can be passed to guards. Use `ModularityRoot.observerOf(context)` to access the observer:
 
 ```dart
 class MyApp extends StatelessWidget {
@@ -239,7 +240,9 @@ class MyApp extends StatelessWidget {
 
             return MaterialApp.router(
               routerConfig: appRouter.config(
-                navigatorObservers: () => [Modularity.observer],
+                navigatorObservers: () => [
+                  ModularityRoot.observerOf(context),
+                ],
               ),
             );
           },
@@ -390,7 +393,7 @@ class DetailsPage extends StatelessWidget {
 
 ### routeBound
 
-The default. The `RouteBoundRetentionStrategy` subscribes to the enclosing `ModalRoute` via `Modularity.observer` and disposes the controller when the route is popped or removed.
+The default. The `RouteBoundRetentionStrategy` subscribes to the enclosing `ModalRoute` via the `RouteObserver` from `ModularityRoot` and disposes the controller when the route is popped or removed.
 
 ```dart
 ModuleScope(
@@ -467,10 +470,14 @@ Fallback order: scope builder -> `ModularityRoot` defaults -> built-in placehold
 Enable lifecycle logging to trace module creation and disposal:
 
 ```dart
-void main() {
-  Modularity.enableDebugLogging();
-  runApp(const MyApp());
-}
+ModularityRoot(
+  lifecycleLogger: kDebugMode ? ModularityRoot.defaultDebugLogger : null,
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    // ...
+  ),
+)
 ```
 
 Output:
@@ -486,10 +493,10 @@ Output:
 |---------|----------|
 | Per-route DI scope | Wrap page content in `ModuleScope` |
 | Route parameters | `Configurable<T>` + `ModuleScope.args` |
-| Route-aware disposal | `Modularity.observer` + `routeBound` policy |
+| Route-aware disposal | `ModularityRoot(observer: ...)` + `routeBound` policy |
 | Cross-tab caching | `keepAlive` policy + `retentionKey` |
 | Scope chaining | Nested `ModuleScope` widgets |
-| GoRouter observer | `GoRouter(observers: [Modularity.observer])` |
-| AutoRoute observer | `appRouter.config(navigatorObservers: () => [Modularity.observer])` |
+| GoRouter observer | `GoRouter(observers: [AppRouter.observer])` |
+| AutoRoute observer | `appRouter.config(navigatorObservers: () => [ModularityRoot.observerOf(context)])` |
 | Root-level services | `RootModule` above the router |
 | Parent dependencies | Declare `expects` in child modules |

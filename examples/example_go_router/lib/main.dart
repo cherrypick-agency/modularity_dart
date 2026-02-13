@@ -13,12 +13,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: AppRouter.observer,
       child: ModuleScope(
         module: RootModule(),
         child: Builder(
           builder: (context) {
-            // We use Builder to ensure context has access to RootModule
-            // This allows AppRouter.redirect to find AuthService
             return MaterialApp.router(
               title: 'GoRouter Example',
               routerConfig: AppRouter.router,

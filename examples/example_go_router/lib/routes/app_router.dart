@@ -10,14 +10,12 @@ import '../modules/root/root_module.dart';
 import '../modules/settings/settings_module.dart';
 
 class AppRouter {
+  static final observer = RouteObserver<ModalRoute<dynamic>>();
+
   static final GoRouter router = GoRouter(
     initialLocation: '/home',
-    observers: [Modularity.observer],
+    observers: [observer],
     redirect: (BuildContext context, GoRouterState state) {
-      // Access AuthService from RootModule
-      // Since MaterialApp.router is wrapped in ModuleScope<RootModule>, we can access it.
-      // However, accessing inherited widgets in redirect can be tricky if context is not fully built or if it's strict.
-      // But usually it works if the router is a child of the provider.
       try {
         final authService = ModuleProvider.of(context).get<AuthService>();
         final isLoggedIn = authService.isLoggedIn;
@@ -26,8 +24,7 @@ class AppRouter {
         if (!isLoggedIn && !isLoggingIn) return '/login';
         if (isLoggedIn && isLoggingIn) return '/home';
       } catch (e) {
-        // If AuthService is not found (e.g. during hot reload or init issues), default to login
-        // return '/login';
+        // If AuthService is not found, default behavior
       }
       return null;
     },
@@ -56,7 +53,7 @@ class AppRouter {
                   final id = state.pathParameters['id']!;
                   return ModuleScope(
                     module: DetailsModule(),
-                    args: id, // <-- Configurable
+                    args: id,
                     child: DetailsPage(id: id),
                   );
                 },

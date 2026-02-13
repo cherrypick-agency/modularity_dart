@@ -61,17 +61,19 @@ Two widgets connect modules to Flutter:
 | `ModularityRoot` | Top-level `InheritedWidget`. Holds the global registry and `BinderFactory`. |
 | `ModuleScope<T>` | Manages one module's lifecycle. |
 
-::: tip Modularity.observer
-`Modularity.observer` is a global `RouteObserver` required for `routeBound` retention policy. Pass it to `navigatorObservers`.
+::: tip Route Observer
+The `routeBound` retention policy requires a `RouteObserver`. Create one externally and pass it to both `ModularityRoot(observer: ...)` and your router's `navigatorObservers`.
 :::
 
 ::: warning Default Retention Policy
-The default retention policy is `routeBound`, which means `Modularity.observer` **must** be added to `navigatorObservers`. If you don't need route-bound retention, explicitly set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope` to skip the observer requirement.
+The default retention policy is `routeBound`, which means an observer **must** be passed to `ModularityRoot(observer: ...)` and added to `navigatorObservers`. If you don't need route-bound retention, explicitly set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope` to skip the observer requirement.
 :::
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
+
+final observer = RouteObserver<ModalRoute<dynamic>>();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -79,13 +81,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: observer,
       defaultLoadingBuilder: (_) =>
           const Center(child: CircularProgressIndicator()),
       defaultErrorBuilder: (_, error, retry) => Center(
         child: TextButton(onPressed: retry, child: Text('Retry: $error')),
       ),
       child: MaterialApp(
-        navigatorObservers: [Modularity.observer],
+        navigatorObservers: [observer],
         home: ModuleScope<AuthModule>(
           module: AuthModule(),
           child: const LoginPage(),

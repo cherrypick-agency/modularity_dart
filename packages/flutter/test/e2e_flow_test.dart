@@ -51,12 +51,15 @@ class FeatureModule extends Module {
 }
 
 // --- UI Components ---
+final _observer = RouteObserver<ModalRoute<dynamic>>();
+
 class TestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: _observer,
       child: MaterialApp(
-        navigatorObservers: [Modularity.observer],
+        navigatorObservers: [_observer],
         home: ModuleScope(module: UserModule(), child: const UserPage()),
       ),
     );
@@ -92,14 +95,11 @@ class UserPage extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () {
-                  // When navigating to a new route, we must manually extend the scope
-                  // because the new route (Overlay) is not a child of this widget in the tree.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ModuleProvider(
-                        controller:
-                            parentController!, // Re-provide UserModule's controller
+                        controller: parentController!,
                         child: ModuleScope(
                           module: FeatureModule(),
                           child: const FeaturePage(),
@@ -123,7 +123,6 @@ class FeaturePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrap in try-catch to debug if resolving fails
     UserService? userService;
     try {
       userService = ModuleProvider.of(context).parent<UserService>();
@@ -135,7 +134,6 @@ class FeaturePage extends StatelessWidget {
       appBar: AppBar(title: const Text('Feature Page')),
       body: Center(
         child: SingleChildScrollView(
-          // Fix Overflow in Feature Page too
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -153,8 +151,7 @@ void main() {
   testWidgets('E2E: Complex Flow (Imports -> Parents -> State Change)', (
     tester,
   ) async {
-    // Set screen size to avoid overflow
-    tester.view.physicalSize = const Size(800, 1200); // Increased size
+    tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -170,13 +167,11 @@ void main() {
     await tester.tap(find.text('Open Feature'));
     await tester.pumpAndSettle();
 
-    // Debug if text is not found
     if (find.text('Module Init Failed').evaluate().isNotEmpty) {
       debugDumpApp();
       fail('Module Init Failed. See logs for details.');
     }
 
-    // We use descendent to find title inside AppBar
     expect(
       find.descendant(
         of: find.byType(AppBar),
@@ -185,7 +180,6 @@ void main() {
       findsOneWidget,
     );
 
-    // And find.text for the body content
     expect(find.text('Feature Page Body'), findsOneWidget);
 
     expect(find.text('User from Parent: User123'), findsOneWidget);

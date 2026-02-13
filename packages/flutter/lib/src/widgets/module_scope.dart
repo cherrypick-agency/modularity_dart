@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:modularity_core/modularity_core.dart';
 
-import '../modularity.dart';
 import '../retention/module_retention_strategy.dart';
 import '../retention/retention_identity.dart';
 import 'modularity_root.dart';
@@ -178,7 +177,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       binderFactory: factory,
       overrides: widget.overrides,
       overrideScopeTree: widget.overrideScope,
-      interceptors: Modularity.interceptors, // Pass global interceptors
+      interceptors: ModularityRoot.interceptorsOf(context),
     );
 
     // Configure the module (args are passed to configure(T args))
@@ -186,7 +185,8 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       controller.configure(widget.args);
     }
 
-    Modularity.log(
+    ModularityRoot.log(
+      context,
       ModuleLifecycleEvent.created,
       widget.module.runtimeType,
       retentionKey: _retentionKey,
@@ -262,6 +262,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
           _releaseController(disposeController: disposeController),
       retainer: ModularityRoot.retainerOf(context),
       route: ModalRoute.of(context),
+      observer: ModularityRoot.observerOf(context),
     );
 
     _strategy = buildStrategy(_policy, binding);

@@ -61,13 +61,15 @@ Two widgets connect modules to Flutter:
 | `ModularityRoot` | Top-level `InheritedWidget`. Holds the global registry and `BinderFactory`. |
 | `ModuleScope<T>` | Manages one module's lifecycle and exposes its binder to descendants. |
 
-::: warning Modularity.observer is Required
-The default retention policy is `routeBound`, which disposes the module when its route is popped. This requires `Modularity.observer` in `navigatorObservers`. Without it, route-bound disposal will not work. If you don't need route-bound retention, set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope`.
+::: warning RouteObserver is Required
+The default retention policy is `routeBound`, which disposes the module when its route is popped. This requires a `RouteObserver` passed to both `ModularityRoot(observer: ...)` and `MaterialApp(navigatorObservers: [...])`. Without it, route-bound disposal will not work. If you don't need route-bound retention, set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope`.
 :::
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
+
+final observer = RouteObserver<ModalRoute<dynamic>>();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -75,13 +77,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: observer,
       defaultLoadingBuilder: (_) =>
           const Center(child: CircularProgressIndicator()),
       defaultErrorBuilder: (_, error, retry) => Center(
         child: TextButton(onPressed: retry, child: Text('Retry: $error')),
       ),
       child: MaterialApp(
-        navigatorObservers: [Modularity.observer],
+        navigatorObservers: [observer],
         home: ModuleScope<AuthModule>(
           module: AuthModule(),
           child: const LoginPage(),

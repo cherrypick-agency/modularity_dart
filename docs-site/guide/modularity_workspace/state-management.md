@@ -202,14 +202,17 @@ class StreamModule extends Module {
 ### App wiring
 
 ```dart
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: observer,
       child: MaterialApp(
-        navigatorObservers: [Modularity.observer],
+        navigatorObservers: [observer],
         home: ModuleScope(
           module: CounterModule(),
           child: const CounterPage(),

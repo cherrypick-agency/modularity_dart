@@ -85,19 +85,24 @@ class SettingsModule extends Module {
 
 ## Observer Registration
 
-`Modularity.observer` is a `RouteObserver` that powers the default `routeBound` retention policy. Register it with your router so module controllers dispose when their route is popped.
+The `routeBound` retention policy relies on a `RouteObserver` to detect route pops. Create an observer externally and pass it to both `ModularityRoot` and your router so module controllers dispose when their route is popped.
 
 For classic `MaterialApp`:
 
 ```dart
-MaterialApp(
-  navigatorObservers: [Modularity.observer],
-  home: ...,
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
+ModularityRoot(
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    home: ...,
+  ),
 )
 ```
 
 ::: warning
-Without `Modularity.observer`, `routeBound` retention cannot detect route pops. Controllers will only dispose when the widget itself is unmounted. Always register the observer at the app level.
+Without an observer passed to `ModularityRoot`, `routeBound` retention cannot detect route pops. Controllers will only dispose when the widget itself is unmounted. Always create an observer and register it at both `ModularityRoot` and the router level.
 :::
 
 ## GoRouter vs AutoRoute Integration Points
@@ -157,7 +162,7 @@ class MyApp extends StatelessWidget {
 
             return MaterialApp.router(
               routerConfig: appRouter.config(
-                navigatorObservers: () => [Modularity.observer],
+                navigatorObservers: () => [ModularityRoot.observerOf(context)],
               ),
             );
           },
@@ -183,7 +188,7 @@ Wrap the `builder` return value in a `ModuleScope`:
 ```dart
 final router = GoRouter(
   initialLocation: '/home',
-  observers: [Modularity.observer],
+  observers: [AppRouter.observer],
   routes: [
     GoRoute(
       path: '/login',
@@ -482,8 +487,12 @@ Enable lifecycle logging during development to trace module creation and disposa
 
 ```dart
 void main() {
-  Modularity.enableDebugLogging();
-  runApp(const MyApp());
+  runApp(
+    ModularityRoot(
+      lifecycleLogger: ModularityRoot.defaultDebugLogger,
+      child: const MyApp(),
+    ),
+  );
 }
 ```
 
@@ -497,7 +506,7 @@ Output:
 ## Checklist
 
 - `ModularityRoot` is the topmost widget
-- `Modularity.observer` is registered with the router
+- An observer is created externally and passed to both `ModularityRoot(observer: ...)` and the router
 - Each route has its own `ModuleScope`
 - Root-level services live in a `RootModule` above the router
 - Route params are passed via `args` + `Configurable<T>`
@@ -507,8 +516,8 @@ Output:
 |---------|----------|
 | Per-route DI scope | Wrap page content in `ModuleScope` |
 | Route parameters | `Configurable<T>` + `ModuleScope.args` |
-| Route-aware disposal | `Modularity.observer` + `routeBound` policy |
+| Route-aware disposal | `ModularityRoot(observer: ...)` + `routeBound` policy |
 | Cross-tab caching | `keepAlive` policy + `retentionKey` |
 | Scope chaining | Nested `ModuleScope` widgets |
 | GoRouter | Pass observer to `GoRouter(observers: [...])` |
-| AutoRoute | Pass observer to `appRouter.config(navigatorObservers: ...)` |
+| AutoRoute | Pass observer to `appRouter.config(navigatorObservers: () => [ModularityRoot.observerOf(context)])` |

@@ -65,12 +65,17 @@ ModuleRetentionPolicy.routeBound
 
 The controller lives as long as the enclosing `ModalRoute` remains on the navigator stack. Disposal happens on `didPop` or `didRemove`.
 
-Internally, `RouteBoundRetentionStrategy` mixes in `RouteAware` and subscribes to `Modularity.observer`. This means the global `RouteObserver` **must** be registered in your `MaterialApp`:
+Internally, `RouteBoundRetentionStrategy` mixes in `RouteAware` and subscribes to the observer passed to `ModularityRoot`. This means a `RouteObserver` **must** be created externally and registered in both `ModularityRoot` and your `MaterialApp`:
 
 ```dart
-MaterialApp(
-  navigatorObservers: [Modularity.observer],
-  // ...
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
+ModularityRoot(
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    // ...
+  ),
 )
 ```
 
@@ -202,10 +207,13 @@ for (final entry in retainer.debugSnapshot()) {
 }
 ```
 
-Enable lifecycle logging to trace retention events in the console:
+Enable lifecycle logging to trace retention events in the console by passing `lifecycleLogger` to `ModularityRoot`:
 
 ```dart
-Modularity.enableDebugLogging();
+ModularityRoot(
+  lifecycleLogger: ModularityRoot.defaultDebugLogger,
+  child: const MyApp(),
+)
 // Output:
 // [Modularity] CREATED ProfileModule key=12345678
 // [Modularity] REGISTERED ProfileModule key=12345678 {policy: keepAlive, refCount: 1}

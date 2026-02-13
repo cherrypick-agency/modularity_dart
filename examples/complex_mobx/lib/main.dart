@@ -5,12 +5,9 @@ import 'package:modularity_flutter/modularity_flutter.dart';
 import 'src/modules/auth/auth_module.dart';
 import 'src/modules/root/root_module.dart';
 
-void main() {
-  // Enable lifecycle logging in debug mode for easier debugging
-  if (kDebugMode) {
-    Modularity.enableDebugLogging();
-  }
+final _observer = RouteObserver<ModalRoute<dynamic>>();
 
+void main() {
   runApp(const ComplexApp());
 }
 
@@ -20,11 +17,13 @@ class ComplexApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModularityRoot(
+      observer: _observer,
+      lifecycleLogger: kDebugMode ? ModularityRoot.defaultDebugLogger : null,
       child: ModuleScope(
         module: RootModule(),
         child: MaterialApp(
           title: 'Complex MobX Shop',
-          navigatorObservers: [Modularity.observer],
+          navigatorObservers: [_observer],
           theme: ThemeData(useMaterial3: true, primarySwatch: Colors.blue),
           home: ModuleScope(module: AuthModule(), child: const LoginPage()),
         ),

@@ -1,6 +1,6 @@
 name: modularity_flutter
 description: Flutter integration for Modularity framework. Provides widgets and utilities for module-based Flutter apps.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/cherrypick-agency/modularity_dart/tree/main/packages/flutter
 homepage: https://github.com/cherrypick-agency/modularity_dart
 issue_tracker: https://github.com/cherrypick-agency/modularity_dart/issues

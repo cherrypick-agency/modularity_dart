@@ -3,21 +3,92 @@ import 'package:modularity_core/modularity_core.dart';
 
 import '../retention/module_retainer.dart';
 
-/// Root inherited widget for the Modularity framework.
+/// Lifecycle event types emitted by the retention and scope systems.
 ///
-/// Provides DI configuration, a shared [ModuleRetainer], and a global module
-/// registry to the entire widget subtree. Must be placed above all
-/// [ModuleScope] widgets in the tree.
+/// Used with [ModuleLifecycleLogger] to trace module creation, reuse,
+/// caching, and disposal.
+enum ModuleLifecycleEvent {
+  /// Controller created for the first time.
+  created,
+
+  /// Existing controller reused from cache.
+  reused,
+
+  /// Controller registered in retention cache.
+  registered,
+
+  /// Controller disposed.
+  disposed,
+
+  /// Controller evicted from retention cache.
+  evicted,
+
+  /// Controller released (ref count decremented).
+  released,
+
+  /// Route termination triggered controller cleanup.
+  routeTerminated,
+}
+
+/// Callback signature for module lifecycle logging.
+///
+/// Parameters:
+/// - [event]: The lifecycle event type.
+/// - [moduleType]: The runtime type of the module.
+/// - [retentionKey]: The cache key (null if not applicable).
+/// - [details]: Additional context (override scope hash, ref count, etc.).
+typedef ModuleLifecycleLogger =
+    void Function(
+      ModuleLifecycleEvent event,
+      Type moduleType, {
+      Object? retentionKey,
+      Map<String, Object?>? details,
+    });
+
+void _defaultDebugLogger(
+  ModuleLifecycleEvent event,
+  Type moduleType, {
+  Object? retentionKey,
+  Map<String, Object?>? details,
+}) {
+  final buffer = StringBuffer()
+    ..write('[Modularity] ')
+    ..write(event.name.toUpperCase())
+    ..write(' ')
+    ..write(moduleType);
+
+  if (retentionKey != null) {
+    buffer
+      ..write(' key=')
+      ..write(retentionKey);
+  }
+
+  if (details != null && details.isNotEmpty) {
+    buffer
+      ..write(' ')
+      ..write(details);
+  }
+
+  debugPrint(buffer.toString());
+}
+
+/// Root widget for the Modularity framework.
+///
+/// Provides DI configuration, a shared [ModuleRetainer], a global module
+/// registry, and lifecycle management to the entire widget subtree. Must be
+/// placed above all [ModuleScope] widgets in the tree.
 ///
 /// ## Usage
 ///
 /// ```dart
+/// final observer = RouteObserver<ModalRoute<dynamic>>();
+///
 /// ModularityRoot(
-///   binderFactory: SimpleBinderFactory(),
-///   defaultLoadingBuilder: (_) => const CircularProgressIndicator(),
-///   defaultErrorBuilder: (_, error, retry) => ErrorWidget(error),
+///   observer: observer,
+///   interceptors: [TimingInterceptor()],
+///   lifecycleLogger: kDebugMode ? ModularityRoot.defaultDebugLogger : null,
 ///   child: MaterialApp(
-///     navigatorObservers: [Modularity.observer],
+///     navigatorObservers: [observer],
 ///     home: const HomePage(),
 ///   ),
 /// )
@@ -25,25 +96,28 @@ import '../retention/module_retainer.dart';
 ///
 /// See also:
 /// - [ModuleScope] which uses the configuration provided by this widget.
-/// - [Modularity] for global observer, interceptors, and lifecycle logging.
-class ModularityRoot extends InheritedWidget {
-  /// Create the root inherited widget that provides DI configuration and a
+class ModularityRoot extends StatefulWidget {
+  /// Create the root widget that provides DI configuration and a
   /// shared [ModuleRetainer] to the widget subtree.
-  ModularityRoot({
+  const ModularityRoot({
     super.key,
-    required super.child,
-    BinderFactory? binderFactory,
+    required this.child,
+    this.binderFactory,
     this.defaultLoadingBuilder,
     this.defaultErrorBuilder,
-    ModuleRetainer? retainer,
-  }) : binderFactory = binderFactory ?? SimpleBinderFactory(),
-       retainer = retainer ?? ModuleRetainer();
-  final Map<ModuleRegistryKey, ModuleController> _registry = {};
+    this.observer,
+    this.interceptors,
+    this.lifecycleLogger,
+    this.retainer,
+  });
+
+  /// Widget subtree that receives the modularity configuration.
+  final Widget child;
 
   /// Factory used to create [Binder] instances for each [ModuleScope].
   ///
   /// Defaults to [SimpleBinderFactory] when not provided.
-  final BinderFactory binderFactory;
+  final BinderFactory? binderFactory;
 
   /// Optional builder for the default loading widget shown by [ModuleScope]
   /// while a module is initializing.
@@ -54,50 +128,222 @@ class ModularityRoot extends InheritedWidget {
   final Widget Function(BuildContext, Object? error, VoidCallback retry)?
   defaultErrorBuilder;
 
+  /// [RouteObserver] for route-bound and keep-alive retention policies.
+  ///
+  /// When provided, pass the same observer to
+  /// `MaterialApp.navigatorObservers` so that route lifecycle events are
+  /// forwarded to the framework.
+  ///
+  /// When omitted, a default observer is created internally with a debug
+  /// warning that route-bound retention will not work unless the observer is
+  /// also registered in the navigator.
+  final RouteObserver<ModalRoute<dynamic>>? observer;
+
+  /// Global list of [ModuleInterceptor]s applied to all modules.
+  final List<ModuleInterceptor>? interceptors;
+
+  /// Optional logger for module lifecycle events.
+  ///
+  /// When set, receives callbacks for module creation/reuse, retention
+  /// cache register/release/evict, and route termination handling.
+  final ModuleLifecycleLogger? lifecycleLogger;
+
   /// Shared [ModuleRetainer] that caches [ModuleController] instances across
   /// scopes using the [ModuleRetentionPolicy.keepAlive] policy.
-  final ModuleRetainer retainer;
+  final ModuleRetainer? retainer;
 
-  @override
-  bool updateShouldNotify(ModularityRoot oldWidget) =>
-      binderFactory != oldWidget.binderFactory ||
-      defaultLoadingBuilder != oldWidget.defaultLoadingBuilder ||
-      defaultErrorBuilder != oldWidget.defaultErrorBuilder ||
-      retainer != oldWidget.retainer;
+  /// Default debug logger that prints lifecycle events via [debugPrint].
+  static const ModuleLifecycleLogger defaultDebugLogger = _defaultDebugLogger;
 
-  /// Return the nearest [ModularityRoot] ancestor, or throw a
-  /// [ModuleConfigurationException] if none exists.
-  static ModularityRoot of(BuildContext context) {
-    final root = context.dependOnInheritedWidgetOfExactType<ModularityRoot>();
-    if (root == null) {
-      throw ModuleConfigurationException(
-        'ModularityRoot not found. Please wrap your app in ModularityRoot.',
-      );
-    }
-    return root;
-  }
+  /// Return the [RouteObserver] from the nearest [ModularityRoot].
+  static RouteObserver<ModalRoute<dynamic>> observerOf(BuildContext context) =>
+      _of(context).observer;
+
+  /// Return the [BinderFactory] from the nearest [ModularityRoot].
+  static BinderFactory binderFactoryOf(BuildContext context) =>
+      _of(context).binderFactory;
 
   /// Return the global module registry from the nearest [ModularityRoot].
   static Map<ModuleRegistryKey, ModuleController> registryOf(
     BuildContext context,
-  ) => of(context)._registry;
+  ) => _of(context).registry;
 
-  /// Return the [BinderFactory] from the nearest [ModularityRoot].
-  static BinderFactory binderFactoryOf(BuildContext context) =>
-      of(context).binderFactory;
+  /// Return the shared [ModuleRetainer] from the nearest [ModularityRoot].
+  static ModuleRetainer retainerOf(BuildContext context) =>
+      _of(context).retainer;
+
+  /// Return the list of [ModuleInterceptor]s from the nearest
+  /// [ModularityRoot].
+  static List<ModuleInterceptor> interceptorsOf(BuildContext context) =>
+      _of(context).interceptors;
 
   /// Return the default loading builder from the nearest [ModularityRoot],
   /// or `null` if none was configured.
   static WidgetBuilder? defaultLoadingBuilderOf(BuildContext context) =>
-      of(context).defaultLoadingBuilder;
+      _of(context).defaultLoadingBuilder;
 
   /// Return the default error builder from the nearest [ModularityRoot],
   /// or `null` if none was configured.
   static Widget Function(BuildContext, Object?, VoidCallback)?
   defaultErrorBuilderOf(BuildContext context) =>
-      of(context).defaultErrorBuilder;
+      _of(context).defaultErrorBuilder;
 
-  /// Return the shared [ModuleRetainer] from the nearest [ModularityRoot].
-  static ModuleRetainer retainerOf(BuildContext context) =>
-      of(context).retainer;
+  /// Log a lifecycle event via the logger from the nearest [ModularityRoot].
+  ///
+  /// Does nothing if no [lifecycleLogger] is configured.
+  static void log(
+    BuildContext context,
+    ModuleLifecycleEvent event,
+    Type moduleType, {
+    Object? retentionKey,
+    Map<String, Object?>? details,
+  }) {
+    _of(context).lifecycleLogger?.call(
+      event,
+      moduleType,
+      retentionKey: retentionKey,
+      details: details,
+    );
+  }
+
+  static _InheritedModularity _of(BuildContext context) {
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_InheritedModularity>();
+    if (scope == null) {
+      throw ModuleConfigurationException(
+        'ModularityRoot not found. Wrap your app in ModularityRoot.',
+      );
+    }
+    return scope;
+  }
+
+  @override
+  State<ModularityRoot> createState() => _ModularityRootState();
+}
+
+class _ModularityRootState extends State<ModularityRoot> {
+  late final BinderFactory _binderFactory;
+  late final RouteObserver<ModalRoute<dynamic>> _observer;
+  late final List<ModuleInterceptor> _interceptors;
+  late final ModuleRetainer _retainer;
+  final Map<ModuleRegistryKey, ModuleController> _registry = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _binderFactory = widget.binderFactory ?? SimpleBinderFactory();
+    _observer = widget.observer ?? RouteObserver<ModalRoute<dynamic>>();
+    _interceptors = List.unmodifiable(widget.interceptors ?? const []);
+    _retainer = widget.retainer ?? ModuleRetainer();
+    _retainer.logger = widget.lifecycleLogger;
+
+    assert(() {
+      if (widget.observer == null) {
+        debugPrint(
+          '[ModularityRoot] No observer provided. RouteBound and '
+          'KeepAlive retention policies require the observer to be '
+          'registered in MaterialApp.navigatorObservers. '
+          'Pass an explicit observer to ModularityRoot.',
+        );
+      }
+      return true;
+    }());
+  }
+
+  @override
+  void didUpdateWidget(ModularityRoot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.lifecycleLogger, oldWidget.lifecycleLogger)) {
+      _retainer.logger = widget.lifecycleLogger;
+    }
+    _reportIfChanged(
+      oldWidget.binderFactory,
+      widget.binderFactory,
+      'binderFactory',
+    );
+    _reportIfChanged(oldWidget.observer, widget.observer, 'observer');
+    _reportIfChanged(oldWidget.retainer, widget.retainer, 'retainer');
+    _reportIfChanged(
+      oldWidget.interceptors,
+      widget.interceptors,
+      'interceptors',
+    );
+  }
+
+  void _reportIfChanged(Object? oldValue, Object? newValue, String field) {
+    if (!identical(oldValue, newValue)) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: FlutterError.fromParts([
+            ErrorSummary('ModularityRoot.$field must not change.'),
+            ErrorHint('Use a different Key to force a new ModularityRoot.'),
+          ]),
+          library: 'modularity_flutter',
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _retainer.logger = null;
+    assert(() {
+      if (_registry.isNotEmpty) {
+        debugPrint(
+          '[ModularityRoot] ${_registry.length} controllers still in '
+          'registry at root disposal.',
+        );
+      }
+      return true;
+    }());
+    _registry.clear();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _InheritedModularity(
+      binderFactory: _binderFactory,
+      observer: _observer,
+      interceptors: _interceptors,
+      lifecycleLogger: widget.lifecycleLogger,
+      defaultLoadingBuilder: widget.defaultLoadingBuilder,
+      defaultErrorBuilder: widget.defaultErrorBuilder,
+      retainer: _retainer,
+      registry: _registry,
+      child: widget.child,
+    );
+  }
+}
+
+class _InheritedModularity extends InheritedWidget {
+  const _InheritedModularity({
+    required this.binderFactory,
+    required this.observer,
+    required this.interceptors,
+    this.lifecycleLogger,
+    this.defaultLoadingBuilder,
+    this.defaultErrorBuilder,
+    required this.retainer,
+    required this.registry,
+    required super.child,
+  });
+
+  final BinderFactory binderFactory;
+  final RouteObserver<ModalRoute<dynamic>> observer;
+  final List<ModuleInterceptor> interceptors;
+  final ModuleLifecycleLogger? lifecycleLogger;
+  final WidgetBuilder? defaultLoadingBuilder;
+  final Widget Function(BuildContext, Object?, VoidCallback)?
+  defaultErrorBuilder;
+  final ModuleRetainer retainer;
+  final Map<ModuleRegistryKey, ModuleController> registry;
+
+  @override
+  bool updateShouldNotify(_InheritedModularity oldWidget) =>
+      binderFactory != oldWidget.binderFactory ||
+      observer != oldWidget.observer ||
+      defaultLoadingBuilder != oldWidget.defaultLoadingBuilder ||
+      defaultErrorBuilder != oldWidget.defaultErrorBuilder ||
+      retainer != oldWidget.retainer;
 }

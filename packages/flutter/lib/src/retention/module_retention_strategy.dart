@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:modularity_core/modularity_core.dart';
 
-import '../modularity.dart';
 import 'module_retainer.dart';
 
 /// Signature for a function that returns the current [ModuleController],
@@ -37,8 +36,8 @@ class ModuleRetentionBinding {
     required this.controllerGetter,
     required this.releaseController,
     required this.retainer,
+    required this.observer,
     this.route,
-    RouteObserver<ModalRoute<dynamic>>? observer,
   });
 
   /// Build context of the owning [ModuleScope] widget.
@@ -59,11 +58,11 @@ class ModuleRetentionBinding {
   /// Callback that releases (and optionally disposes) the active controller.
   final ControllerRelease releaseController;
 
+  /// [RouteObserver] used for route-bound and keep-alive retention policies.
+  final RouteObserver<ModalRoute<dynamic>> observer;
+
   /// Modal route that owns the current scope, or `null` when outside a route.
   final ModalRoute<dynamic>? route;
-
-  /// Return the global [RouteObserver] registered with [Modularity].
-  RouteObserver<ModalRoute<dynamic>> get observer => Modularity.observer;
 }
 
 /// Base class for module retention strategies that govern when a
@@ -254,10 +253,10 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
       return;
     }
     if (_route != null) {
-      Modularity.observer.unsubscribe(this);
+      binding.observer.unsubscribe(this);
     }
     _route = route;
-    Modularity.observer.subscribe(this, route);
+    binding.observer.subscribe(this, route);
   }
 
   @override
@@ -281,7 +280,7 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
 
   @override
   Future<void> onStateDispose() async {
-    Modularity.observer.unsubscribe(this);
+    binding.observer.unsubscribe(this);
     if (!_disposedByRoute) {
       await binding.releaseController(disposeController: true);
     }

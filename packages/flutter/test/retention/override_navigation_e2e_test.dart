@@ -55,19 +55,19 @@ void main() {
     late ModuleRetainer retainer;
     late GlobalKey<NavigatorState> navigatorKey;
     late List<String> lifecycleLog;
+    late RouteObserver<ModalRoute<dynamic>> observer;
+    late ModuleLifecycleLogger logger;
 
     setUp(() {
       retainer = ModuleRetainer();
       navigatorKey = GlobalKey<NavigatorState>();
       lifecycleLog = [];
+      observer = RouteObserver<ModalRoute<dynamic>>();
 
-      Modularity.lifecycleLogger = (event, type, {retentionKey, details}) {
+      logger = (event, type, {retentionKey, details}) {
         lifecycleLog.add('${event.name}:$type:$retentionKey');
       };
-    });
-
-    tearDown(() {
-      Modularity.disableLogging();
+      retainer.logger = logger;
     });
 
     testWidgets(
@@ -92,13 +92,14 @@ void main() {
           },
         );
 
-        // Build initial route with module1 + overrideScopeA
         await tester.pumpWidget(
           ModularityRoot(
+            observer: observer,
             retainer: retainer,
+            lifecycleLogger: logger,
             child: MaterialApp(
               navigatorKey: navigatorKey,
-              navigatorObservers: [Modularity.observer],
+              navigatorObservers: [observer],
               home: ModuleScope(
                 module: module1,
                 retentionPolicy: ModuleRetentionPolicy.keepAlive,
@@ -121,12 +122,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Verify variant A is applied
         expect(find.text('Route1: variant-a'), findsOneWidget);
         expect(module1.initCount, 1);
         expect(retainer.debugSnapshot().length, 1);
 
-        // Push new route with module2 + overrideScopeB
         navigatorKey.currentState!.push(
           MaterialPageRoute<void>(
             builder: (_) => ModuleScope(
@@ -150,12 +149,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Verify variant B is applied on route 2
         expect(find.text('Route2: variant-b'), findsOneWidget);
         expect(module2.initCount, 1);
         expect(retainer.debugSnapshot().length, 2);
 
-        // Replace route 2 to trigger route termination
         navigatorKey.currentState!.pushReplacement(
           MaterialPageRoute<void>(
             builder: (_) =>
@@ -164,11 +161,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Module2 should be evicted (route terminated)
         expect(module2.disposeCount, 1);
         expect(retainer.debugSnapshot().length, 1);
 
-        // Module1 should still be alive (cached)
         expect(module1.disposeCount, 0);
       },
     );
@@ -195,17 +190,18 @@ void main() {
           },
         );
 
-        // First route with override A
         await tester.pumpWidget(
           ModularityRoot(
+            observer: observer,
             retainer: retainer,
+            lifecycleLogger: logger,
             child: MaterialApp(
               navigatorKey: navigatorKey,
-              navigatorObservers: [Modularity.observer],
+              navigatorObservers: [observer],
               home: ModuleScope(
                 module: module1,
                 retentionPolicy: ModuleRetentionPolicy.keepAlive,
-                retentionKey: 'shared-key', // Same key
+                retentionKey: 'shared-key',
                 overrideScope: overrideA,
                 child: Builder(
                   builder: (context) {
@@ -227,7 +223,6 @@ void main() {
         expect(find.text('Route1: variant-a'), findsOneWidget);
         expect(module1.initCount, 1);
 
-        // Navigate away (module stays in cache)
         navigatorKey.currentState!.push(
           MaterialPageRoute<void>(
             builder: (_) =>
@@ -236,14 +231,13 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Navigate to a new route with same key but different override
         navigatorKey.currentState!.push(
           MaterialPageRoute<void>(
             builder: (_) => ModuleScope(
               module: module2,
               retentionPolicy: ModuleRetentionPolicy.keepAlive,
-              retentionKey: 'shared-key', // Same key - should reuse!
-              overrideScope: overrideB, // Different override - but key is same
+              retentionKey: 'shared-key',
+              overrideScope: overrideB,
               child: Builder(
                 builder: (context) {
                   final service = ModuleProvider.of(
@@ -260,7 +254,6 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Should REUSE module1's controller (same key), NOT apply overrideB
         expect(find.text('Route3: variant-a'), findsOneWidget);
         expect(
           module2.initCount,
@@ -276,10 +269,12 @@ void main() {
 
       await tester.pumpWidget(
         ModularityRoot(
+          observer: observer,
           retainer: retainer,
+          lifecycleLogger: logger,
           child: MaterialApp(
             navigatorKey: navigatorKey,
-            navigatorObservers: [Modularity.observer],
+            navigatorObservers: [observer],
             home: ModuleScope(
               module: module,
               retentionPolicy: ModuleRetentionPolicy.keepAlive,
@@ -291,7 +286,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Should have created and registered events
       expect(
         lifecycleLog,
         containsAll([
@@ -300,13 +294,11 @@ void main() {
         ]),
       );
 
-      // Pop to trigger route termination
       navigatorKey.currentState!.pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
       );
       await tester.pumpAndSettle();
 
-      // Should have route terminated and evicted events
       expect(
         lifecycleLog,
         containsAll([
@@ -328,10 +320,12 @@ void main() {
 
       await tester.pumpWidget(
         ModularityRoot(
+          observer: observer,
           retainer: retainer,
+          lifecycleLogger: logger,
           child: MaterialApp(
             navigatorKey: navigatorKey,
-            navigatorObservers: [Modularity.observer],
+            navigatorObservers: [observer],
             home: buildHome(),
           ),
         ),
@@ -341,7 +335,6 @@ void main() {
       expect(module.initCount, 1);
       expect(module.disposeCount, 0);
 
-      // Push detail screen
       navigatorKey.currentState!.push(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -350,20 +343,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Home module should still be cached (not disposed)
       expect(module.disposeCount, 0);
       expect(retainer.debugSnapshot().length, 1);
 
-      // Pop back to home
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
 
-      // Should reuse cached controller
       expect(module.initCount, 1, reason: 'Should reuse cached controller');
       expect(module.disposeCount, 0);
       expect(find.text('Home'), findsOneWidget);
 
-      // Push and replace home route
       navigatorKey.currentState!.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) =>
@@ -372,7 +361,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Now home should be disposed (route terminated)
       expect(module.disposeCount, 1);
       expect(retainer.debugSnapshot(), isEmpty);
     });

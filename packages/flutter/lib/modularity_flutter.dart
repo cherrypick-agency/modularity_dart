@@ -10,9 +10,12 @@
 /// modules are needed:
 ///
 /// ```dart
+/// final observer = RouteObserver<ModalRoute<dynamic>>();
+///
 /// ModularityRoot(
+///   observer: observer,
 ///   child: MaterialApp(
-///     navigatorObservers: [Modularity.observer],
+///     navigatorObservers: [observer],
 ///     home: ModuleScope<HomeModule>(
 ///       module: HomeModule(),
 ///       child: const HomePage(),
@@ -29,19 +32,18 @@
 ///
 /// ## Key Classes
 ///
-/// - [ModularityRoot] -- root inherited widget providing DI configuration.
+/// - [ModularityRoot] -- root widget providing DI configuration, observer,
+///   interceptors, and lifecycle logging.
 /// - [ModuleScope] -- manages a single module's lifecycle with retention.
 /// - [ModuleProvider] -- exposes a module's [Binder] to descendants.
-/// - [Modularity] -- global configuration (observer, interceptors, logging).
 /// - [ModuleRetainer] -- cache for controllers with KeepAlive policy.
 library modularity_flutter;
 
 export 'package:modularity_core/modularity_core.dart';
 
-export 'src/modularity.dart'
-    show Modularity, ModuleLifecycleEvent, ModuleLifecycleLogger;
 export 'src/retention/module_retainer.dart'
     show ModuleRetainer, ModuleRetainerEntrySnapshot;
-export 'src/widgets/modularity_root.dart';
+export 'src/widgets/modularity_root.dart'
+    show ModularityRoot, ModuleLifecycleEvent, ModuleLifecycleLogger;
 export 'src/widgets/module_provider.dart';
 export 'src/widgets/module_scope.dart';

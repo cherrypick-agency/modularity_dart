@@ -172,26 +172,36 @@ ModuleController(MyModule(), interceptors: [TimingInterceptor()]);
 
 // Global (Flutter) -- applied to all ModuleScope widgets:
 void main() {
-  Modularity.interceptors.addAll([TimingInterceptor()]);
-  runApp(ModularityRoot(child: MyApp()));
+  runApp(ModularityRoot(
+    interceptors: [TimingInterceptor()],
+    child: MyApp(),
+  ));
 }
 ```
 
 ## Lifecycle Logging
 
-Built-in logging for module retention events (creation, reuse, disposal, cache operations).
+Built-in logging for module retention events (creation, reuse, disposal, cache operations). Pass `lifecycleLogger` to `ModularityRoot`:
 
 ```dart
 // Enable console logging:
-Modularity.enableDebugLogging();
+ModularityRoot(
+  lifecycleLogger: ModularityRoot.defaultDebugLogger,
+  child: const MyApp(),
+)
 
 // Custom logger:
-Modularity.lifecycleLogger = (event, moduleType, {retentionKey, details}) {
-  myLogger.info('${event.name}: $moduleType key=$retentionKey');
-};
+ModularityRoot(
+  lifecycleLogger: (event, moduleType, {retentionKey, details}) {
+    myLogger.info('${event.name}: $moduleType key=$retentionKey');
+  },
+  child: const MyApp(),
+)
 
-// Disable:
-Modularity.disableLogging();
+// Disable (default -- omit lifecycleLogger):
+ModularityRoot(
+  child: const MyApp(),
+)
 ```
 
 Output example:

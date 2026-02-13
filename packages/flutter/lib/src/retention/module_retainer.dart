@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:modularity_core/modularity_core.dart';
 
-import '../modularity.dart';
+import '../widgets/modularity_root.dart';
 
 /// Snapshot of a retained module entry for debugging purposes.
 ///
@@ -37,6 +37,7 @@ class ModuleRetainerEntrySnapshot {
 
 class _ModuleRetainerEntry {
   _ModuleRetainerEntry({
+    required this.retainer,
     required this.controller,
     required this.policy,
     required this.lastAccessed,
@@ -47,6 +48,7 @@ class _ModuleRetainerEntry {
     attachRoute(route: route, onRouteTerminated: onRouteTerminated);
   }
 
+  final ModuleRetainer retainer;
   final ModuleController controller;
   final ModuleRetentionPolicy policy;
   final Type moduleType;
@@ -89,7 +91,7 @@ class _ModuleRetainerEntry {
   Future<void> _notifyRouteTermination() async {
     if (_routeNotified) return;
     _routeNotified = true;
-    Modularity.log(
+    retainer._log(
       ModuleLifecycleEvent.routeTerminated,
       moduleType,
       details: {'routeType': _route.runtimeType.toString()},
@@ -145,6 +147,25 @@ class _ModuleRetainerEntry {
 class ModuleRetainer {
   final Map<Object, _ModuleRetainerEntry> _entries = {};
 
+  /// Optional logger for module lifecycle events.
+  ///
+  /// Set by [ModularityRoot] during initialization and cleared on disposal.
+  ModuleLifecycleLogger? logger;
+
+  void _log(
+    ModuleLifecycleEvent event,
+    Type moduleType, {
+    Object? retentionKey,
+    Map<String, Object?>? details,
+  }) {
+    logger?.call(
+      event,
+      moduleType,
+      retentionKey: retentionKey,
+      details: details,
+    );
+  }
+
   /// Return whether a controller with the given [key] exists in the cache.
   bool contains(Object key) => _entries.containsKey(key);
 
@@ -159,7 +180,7 @@ class ModuleRetainer {
     if (entry == null) return null;
     entry.refCount++;
     entry.lastAccessed = DateTime.now();
-    Modularity.log(
+    _log(
       ModuleLifecycleEvent.reused,
       entry.moduleType,
       retentionKey: key,
@@ -189,6 +210,7 @@ class ModuleRetainer {
       );
     }
     final entry = _ModuleRetainerEntry(
+      retainer: this,
       controller: controller,
       policy: policy,
       lastAccessed: DateTime.now(),
@@ -197,7 +219,7 @@ class ModuleRetainer {
       onRouteTerminated: onRouteTerminated,
     );
     _entries[key] = entry;
-    Modularity.log(
+    _log(
       ModuleLifecycleEvent.registered,
       controller.module.runtimeType,
       retentionKey: key,
@@ -219,7 +241,7 @@ class ModuleRetainer {
     if (entry.refCount > 0) {
       entry.refCount--;
     }
-    Modularity.log(
+    _log(
       ModuleLifecycleEvent.released,
       entry.moduleType,
       retentionKey: key,
@@ -231,7 +253,7 @@ class ModuleRetainer {
     if (disposeIfOrphaned && entry.refCount <= 0) {
       final removed = _entries.remove(key) ?? entry;
       await removed.dispose();
-      Modularity.log(
+      _log(
         ModuleLifecycleEvent.disposed,
         removed.moduleType,
         retentionKey: key,
@@ -247,7 +269,7 @@ class ModuleRetainer {
   Future<void> evict(Object key, {bool disposeController = true}) async {
     final entry = _entries.remove(key);
     if (entry == null) return;
-    Modularity.log(
+    _log(
       ModuleLifecycleEvent.evicted,
       entry.moduleType,
       retentionKey: key,
@@ -255,7 +277,7 @@ class ModuleRetainer {
     );
     if (disposeController) {
       await entry.dispose();
-      Modularity.log(
+      _log(
         ModuleLifecycleEvent.disposed,
         entry.moduleType,
         retentionKey: key,

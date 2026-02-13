@@ -108,10 +108,13 @@ class AppModule extends Module {
 ### 2. Initialize Root
 
 ```dart
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
 void main() {
   runApp(ModularityRoot(
+    observer: observer,
     child: MaterialApp(
-      navigatorObservers: [Modularity.observer], // Required for routeBound policy
+      navigatorObservers: [observer], // Required for routeBound policy
       home: ModuleScope(
         module: AppModule(),
         child: HomePage(),
@@ -121,7 +124,7 @@ void main() {
 }
 ```
 
-> **Important**: Add `Modularity.observer` to `navigatorObservers` to enable automatic module disposal when routes pop.
+> **Important**: Create a `RouteObserver` and pass it to both `ModularityRoot(observer: ...)` and `navigatorObservers` to enable automatic module disposal when routes pop.
 
 > Need to keep modules alive across tab switches or background navigation layers? Set the retention policy explicitly:
 >
@@ -260,10 +263,12 @@ class AnalyticsInterceptor implements ModuleInterceptor {
   }
 }
 
-// Register globally
+// Register globally via ModularityRoot
 void main() {
-  Modularity.interceptors.add(AnalyticsInterceptor());
-  runApp(MyApp());
+  runApp(ModularityRoot(
+    interceptors: [AnalyticsInterceptor()],
+    child: MyApp(),
+  ));
 }
 ```
 
@@ -408,26 +413,31 @@ ModuleScope(
 ### GoRouter
 
 ```dart
-final router = GoRouter(
-  observers: [Modularity.observer], // Required!
-  routes: [
-    GoRoute(
-      path: '/product/:id',
-      builder: (context, state) {
-        final id = state.pathParameters['id']!;
-        return ModuleScope(
-          module: ProductModule(),
-          args: id, // Configurable<String>
-          child: ProductPage(),
-        );
-      },
-    ),
-  ],
-);
+class AppRouter {
+  static final observer = RouteObserver<ModalRoute<dynamic>>();
+
+  static final router = GoRouter(
+    observers: [observer],
+    routes: [
+      GoRoute(
+        path: '/product/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ModuleScope(
+            module: ProductModule(),
+            args: id, // Configurable<String>
+            child: ProductPage(),
+          );
+        },
+      ),
+    ],
+  );
+}
 
 // main.dart
 runApp(ModularityRoot(
-  child: MaterialApp.router(routerConfig: router),
+  observer: AppRouter.observer,
+  child: MaterialApp.router(routerConfig: AppRouter.router),
 ));
 ```
 
@@ -445,9 +455,11 @@ class AppRouter extends RootStackRouter {
 // main.dart
 final appRouter = AppRouter();
 runApp(ModularityRoot(
-  child: MaterialApp.router(
-    routerConfig: appRouter.config(
-      navigatorObservers: () => [Modularity.observer],
+  child: Builder(
+    builder: (context) => MaterialApp.router(
+      routerConfig: appRouter.config(
+        navigatorObservers: () => [ModularityRoot.observerOf(context)],
+      ),
     ),
   ),
 ));
@@ -582,10 +594,11 @@ Enable debug logging to trace module creation, caching, and disposal events:
 
 ```dart
 void main() {
-  // Enable default console logging (debug builds only recommended)
-  Modularity.enableDebugLogging();
-
-  runApp(MyApp());
+  runApp(ModularityRoot(
+    // Enable default console logging (debug builds only recommended)
+    lifecycleLogger: ModularityRoot.defaultDebugLogger,
+    child: MyApp(),
+  ));
 }
 ```
 
@@ -600,16 +613,19 @@ Output example:
 [Modularity] DISPOSED ConfigModule key=config-module {reason: evicted}
 ```
 
-For custom integrations (analytics, crash reporting), use a custom logger:
+For custom integrations (analytics, crash reporting), use a custom logger on `ModularityRoot`:
 
 ```dart
-Modularity.lifecycleLogger = (event, type, {retentionKey, details}) {
-  analytics.track('module_${event.name}', {
-    'type': type.toString(),
-    'key': retentionKey?.toString(),
-    ...?details?.map((k, v) => MapEntry(k, v.toString())),
-  });
-};
+ModularityRoot(
+  lifecycleLogger: (event, type, {retentionKey, details}) {
+    analytics.track('module_${event.name}', {
+      'type': type.toString(),
+      'key': retentionKey?.toString(),
+      ...?details?.map((k, v) => MapEntry(k, v.toString())),
+    });
+  },
+  child: MyApp(),
+)
 ```
 
 Available events: `created`, `reused`, `registered`, `disposed`, `evicted`, `released`, `routeTerminated`.

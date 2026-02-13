@@ -303,9 +303,12 @@ flowchart TB
 Widget tree:
 
 ```dart
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
 ModularityRoot(
+  observer: observer,
   child: MaterialApp(
-    navigatorObservers: [Modularity.observer],
+    navigatorObservers: [observer],
     home: ModuleScope<AppModule>(
       module: AppModule(),
       child: CatalogPage(),

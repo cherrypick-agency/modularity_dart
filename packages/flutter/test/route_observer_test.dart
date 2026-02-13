@@ -20,6 +20,8 @@ class TestModule extends Module {
   }
 }
 
+final _observer = RouteObserver<ModalRoute<dynamic>>();
+
 void main() {
   testWidgets('ModuleScope Retention Policy: Dispose only on Pop', (
     tester,
@@ -28,8 +30,9 @@ void main() {
 
     await tester.pumpWidget(
       ModularityRoot(
+        observer: _observer,
         child: MaterialApp(
-          navigatorObservers: [Modularity.observer], // Important!
+          navigatorObservers: [_observer],
           home: Builder(
             builder: (context) => Scaffold(
               body: Column(
@@ -74,11 +77,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Third Screen Body'), findsOneWidget);
-    // Module Screen is hidden but should NOT be disposed
     expect(module.isDisposed, false);
 
     // 4. Pop Third Screen
-    await tester.tap(find.text('Back')); // Standard back button or logic
+    await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
 
     expect(find.text('Module Screen Body'), findsOneWidget);
@@ -89,7 +91,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Home'), findsOneWidget);
-    // Now it should be disposed
     expect(module.isDisposed, true);
   });
 }

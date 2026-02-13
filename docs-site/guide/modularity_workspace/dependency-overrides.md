@@ -279,10 +279,10 @@ class TimingInterceptor implements ModuleInterceptor {
 ModuleController(MyModule(), interceptors: [TimingInterceptor()]);
 
 // Global (Flutter) -- applied to all ModuleScope widgets:
-void main() {
-  Modularity.interceptors.addAll([TimingInterceptor()]);
-  runApp(ModularityRoot(child: MyApp()));
-}
+ModularityRoot(
+  interceptors: [TimingInterceptor()],
+  child: MyApp(),
+)
 ```
 
 ## Lifecycle Logging
@@ -291,15 +291,20 @@ Built-in logging for module retention events:
 
 ```dart
 // Enable console logging:
-Modularity.enableDebugLogging();
+ModularityRoot(
+  lifecycleLogger: ModularityRoot.defaultDebugLogger,
+  // ...
+)
 
 // Custom logger:
-Modularity.lifecycleLogger = (event, moduleType, {retentionKey, details}) {
-  myLogger.info('${event.name}: $moduleType key=$retentionKey');
-};
+ModularityRoot(
+  lifecycleLogger: (event, moduleType, {retentionKey, details}) {
+    myLogger.info('${event.name}: $moduleType key=$retentionKey');
+  },
+  // ...
+)
 
-// Disable:
-Modularity.disableLogging();
+// Disable: simply omit lifecycleLogger (null by default)
 ```
 
 ::: details ModuleLifecycleEvent values
