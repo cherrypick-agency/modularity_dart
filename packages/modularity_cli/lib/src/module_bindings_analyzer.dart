@@ -5,7 +5,11 @@ import 'recording_binder.dart';
 /// Immutable snapshot of a [Module]'s dependency registrations.
 ///
 /// Produced by [ModuleBindingsAnalyzer] after introspecting a module's
-/// `binds`, `exports`, and `expects` declarations.
+/// `binds`, `exports`, and `expects` declarations. Contains all information
+/// needed to render a node in the dependency graph.
+///
+/// See also:
+/// - [ModuleBindingsAnalyzer.analyze] which produces these snapshots.
 class ModuleBindingsSnapshot {
   /// Create a snapshot for the given [moduleType].
   ModuleBindingsSnapshot({
@@ -39,10 +43,19 @@ class ModuleBindingsSnapshot {
   bool get hasExpects => expects.isNotEmpty;
 }
 
-/// Analyze a [Module] tree and produce [ModuleBindingsSnapshot] for each node.
+/// Analyzes a [Module] tree and produces [ModuleBindingsSnapshot] for each
+/// node by running its `binds` and `exports` phases against a
+/// [RecordingBinder].
 ///
-/// Uses a [RecordingBinder] to introspect registrations without constructing
-/// real dependencies. Results are cached by module runtime type.
+/// Results are cached by module runtime type so repeated analysis of the
+/// same module type is O(1). Throws [CircularDependencyException] if a cycle
+/// is detected in the import graph.
+///
+/// ```dart
+/// final analyzer = ModuleBindingsAnalyzer();
+/// final snapshot = analyzer.analyze(myModule);
+/// print(snapshot.privateDependencies);
+/// ```
 class ModuleBindingsAnalyzer {
   final Map<Type, ModuleBindingsSnapshot> _cache = {};
   final Map<Type, RecordingBinder> _binderCache = {};

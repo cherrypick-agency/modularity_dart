@@ -1,7 +1,11 @@
 import 'module.dart';
 
-/// Defines how a `ModuleScope` should manage the lifetime of a module
-/// relative to the surrounding UI/navigation events.
+/// Defines how a `ModuleScope` manages the lifetime of a module relative
+/// to navigation and widget lifecycle events.
+///
+/// See also:
+/// - `ModuleScope` in `modularity_flutter` where the policy is applied.
+/// - [ModuleRetentionContext] for identity computation.
 enum ModuleRetentionPolicy {
   /// Dispose when the owning route leaves the navigator stack
   /// (default RouteObserver-driven behaviour).
@@ -15,9 +19,13 @@ enum ModuleRetentionPolicy {
   strict,
 }
 
-/// Context payload used to derive a deterministic retention identity.
+/// Context payload used to derive a deterministic retention identity for a
+/// module instance.
+///
+/// Passed to [RetentionIdentityProvider.buildRetentionIdentity] so that the
+/// module can produce a stable key based on its type, route, and arguments.
 class ModuleRetentionContext {
-  /// Create a retention context for the given [moduleType].
+  /// Creates a retention context for the given [moduleType].
   ModuleRetentionContext({
     required this.moduleType,
     this.routeName,
@@ -47,9 +55,26 @@ class ModuleRetentionContext {
   final Map<String, Object?> extras;
 }
 
-/// Optional mixin for modules that know how to compute their own retention key.
+/// Optional mixin for modules that compute their own retention key.
+///
+/// When a module mixes in [RetentionIdentityProvider], the `ModuleScope`
+/// calls [buildRetentionIdentity] instead of using the default identity
+/// strategy. This allows modules to produce stable keys based on route
+/// parameters or other contextual data.
+///
+/// ```dart
+/// class UserModule extends Module with RetentionIdentityProvider {
+///   @override
+///   Object? buildRetentionIdentity(ModuleRetentionContext context) {
+///     return 'user-${context.argumentsHash}';
+///   }
+///
+///   @override
+///   void binds(Binder i) { /* ... */ }
+/// }
+/// ```
 mixin RetentionIdentityProvider on Module {
   /// Returns an object that uniquely identifies this module instance for
-  /// retention purposes. The value must be stable across rebuilds.
+  /// retention purposes. The value must be stable across widget rebuilds.
   Object? buildRetentionIdentity(ModuleRetentionContext context);
 }

@@ -7,10 +7,33 @@ import '../graph/graph_resolver.dart';
 import '../graph/module_registry_key.dart';
 import 'module_override_scope.dart';
 
-/// Manage the full lifecycle of a single [Module]: resolution, initialisation,
-/// hot reload, and disposal.
+/// Manages the full lifecycle of a single [Module]: dependency resolution,
+/// initialization, hot reload, and disposal.
+///
+/// The controller orchestrates the following sequence during [initialize]:
+/// 1. Resolves and initializes all imported modules via [GraphResolver].
+/// 2. Validates [Module.expects] against available scopes.
+/// 3. Calls [Module.binds] (private scope) and [Module.exports] (public scope).
+/// 4. Applies any [overrides] to the binder.
+/// 5. Calls [Module.onInit] for async setup.
+///
+/// ```dart
+/// final controller = ModuleController(AppModule());
+/// await controller.initialize({});
+///
+/// // Access dependencies:
+/// final service = controller.binder.get<MyService>();
+///
+/// // Dispose when done:
+/// await controller.dispose();
+/// ```
+///
+/// See also:
+/// - [Module] for the lifecycle hooks.
+/// - `GraphResolver` for the import resolution algorithm.
+/// - [ModuleOverrideScope] for hierarchical dependency overrides.
 class ModuleController {
-  /// Create a controller for [module] with optional DI configuration.
+  /// Creates a controller for [module] with optional DI configuration.
   ///
   /// When neither [binder] nor [binderFactory] is supplied, a default
   /// [SimpleBinderFactory] is used.
@@ -73,7 +96,10 @@ class ModuleController {
   /// `null` if no error occurred.
   Object? get lastError => _lastError;
 
-  /// Configure the module.
+  /// Passes [args] to the module's [Configurable.configure] method.
+  ///
+  /// Throws [ModuleLifecycleException] if the module implements [Configurable]
+  /// but the argument type does not match.
   void configure(dynamic args) {
     if (module is Configurable) {
       try {
@@ -91,7 +117,13 @@ class ModuleController {
     }
   }
 
-  /// Start the initialization lifecycle.
+  /// Runs the full initialization lifecycle for this module.
+  ///
+  /// Uses [globalModuleRegistry] to deduplicate module controllers across
+  /// concurrent import branches. Pass [resolutionStack] for cycle detection.
+  ///
+  /// Throws [CircularDependencyException], [ModuleConfigurationException],
+  /// or [ModuleLifecycleException] on failure.
   Future<void> initialize(
     Map<ModuleRegistryKey, ModuleController> globalModuleRegistry, {
     Set<Type>? resolutionStack,
@@ -177,7 +209,11 @@ class ModuleController {
     }
   }
 
-  /// Hot Reload logic.
+  /// Re-runs [Module.binds] and [Module.exports] under
+  /// [RegistrationStrategy.preserveExisting] to refresh factory closures
+  /// without losing singleton state.
+  ///
+  /// No-op if the module is not in the [ModuleStatus.loaded] state.
   void hotReload() {
     if (_currentStatus != ModuleStatus.loaded) return;
 
@@ -212,7 +248,10 @@ class ModuleController {
     module.hotReload(binder);
   }
 
-  /// Dispose of the module, its [Binder], and close the status stream.
+  /// Disposes the module, its [Binder], and closes the status stream.
+  ///
+  /// Calls [Module.onDispose], then [DisposableBinder.dispose] if the
+  /// binder supports it, and finally closes the [status] stream.
   Future<void> dispose() async {
     _updateStatus(ModuleStatus.disposed);
 

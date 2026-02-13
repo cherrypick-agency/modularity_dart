@@ -1,9 +1,18 @@
 import '../engine/module_override_scope.dart';
 
-/// Key used in the global module registry to differentiate controller
-/// instances not only by their runtime type but also by override scope.
+/// Composite key used in the global module registry to differentiate
+/// [ModuleController] instances by both their runtime [Type] and
+/// [ModuleOverrideScope].
+///
+/// Two keys are equal when they have the same [moduleType] and point to
+/// the **identical** [overrideScope] object (identity comparison, not deep
+/// equality). This ensures that modules with different override trees
+/// get separate controllers.
+///
+/// See also:
+/// - `GraphResolver` which uses this key to deduplicate controllers.
 class ModuleRegistryKey {
-  /// Create a registry key for the given [moduleType] and optional
+  /// Creates a registry key for the given [moduleType] and optional
   /// [overrideScope].
   const ModuleRegistryKey({required this.moduleType, this.overrideScope});
 

@@ -2,18 +2,29 @@ import 'dart:async';
 import 'package:modularity_core/modularity_core.dart';
 import 'test_binder.dart';
 
-/// Test helper to verify module lifecycle.
+/// Test helper that initializes a [Module] in isolation, runs the [body]
+/// callback, and disposes the controller afterward.
 ///
-/// Example:
+/// Creates a [SimpleBinder] wrapped in a [TestBinder], initializes the
+/// module's full lifecycle (binds, imports, exports), and passes both the
+/// module instance and the test binder to the callback for assertions.
+///
+/// Optionally accepts [overrides] and [overrideScope] to test DI overrides.
+///
+/// ## Example
+///
 /// ```dart
 /// await testModule(
 ///   MyModule(),
 ///   (module, binder) async {
 ///     expect(binder.get<MyService>(), isNotNull);
 ///     expect(binder.hasSingleton<MyService>(), isTrue);
-///   }
+///   },
 /// );
 /// ```
+///
+/// See also:
+/// - [TestBinder] for inspecting registration and resolution history.
 Future<void> testModule<T extends Module>(
   T module,
   FutureOr<void> Function(T module, TestBinder binder) body, {

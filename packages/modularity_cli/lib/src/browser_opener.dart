@@ -1,9 +1,13 @@
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
-/// Write HTML content to a temporary file and open it in the default browser.
+/// Writes HTML content to a temporary file and opens it in the default browser.
+///
+/// Supports macOS (`open`), Windows (`cmd /c start`), and Linux (`xdg-open`).
+/// Used internally by [GraphVisualizer] after generating the HTML output.
 class BrowserOpener {
-  /// Write [htmlContent] to a temp file and launch the platform browser.
+  /// Write [htmlContent] to a temporary file and launch the platform's
+  /// default browser to display it.
   static Future<void> openHtml(String htmlContent) async {
     final tempDir = Directory.systemTemp.createTempSync('modularity_graph_');
     final file = File(path.join(tempDir.path, 'graph.html'));

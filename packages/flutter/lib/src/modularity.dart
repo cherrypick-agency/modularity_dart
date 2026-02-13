@@ -1,7 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-/// Lifecycle event types for module logging.
+/// Lifecycle event types emitted by the retention and scope systems.
+///
+/// Used with [ModuleLifecycleLogger] to trace module creation, reuse,
+/// caching, and disposal.
 enum ModuleLifecycleEvent {
   /// Controller created for the first time.
   created,
@@ -40,7 +43,30 @@ typedef ModuleLifecycleLogger =
       Map<String, Object?>? details,
     });
 
-/// Global configuration and helpers for Modularity.
+/// Global configuration and helpers for the Modularity framework.
+///
+/// Provides access to:
+/// - [observer] -- a [RouteObserver] that route-bound retention strategies
+///   subscribe to.
+/// - [interceptors] -- a list of [ModuleInterceptor]s applied to all modules.
+/// - [lifecycleLogger] -- optional callback for tracing module lifecycle events.
+///
+/// ## Setup
+///
+/// Register the observer in your `MaterialApp`:
+///
+/// ```dart
+/// MaterialApp(
+///   navigatorObservers: [Modularity.observer],
+///   home: const HomePage(),
+/// )
+/// ```
+///
+/// Enable debug logging during development:
+///
+/// ```dart
+/// Modularity.enableDebugLogging();
+/// ```
 class Modularity {
   Modularity._();
 

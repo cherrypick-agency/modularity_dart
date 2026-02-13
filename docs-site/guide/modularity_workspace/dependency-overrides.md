@@ -1,21 +1,13 @@
-# 🔀 Dependency Overrides
+# Dependency Overrides
 
 Replace, extend, or intercept dependency registrations at any level of the module graph.
 
 ## Simple Overrides
 
-Pass an `overrides` callback that runs **after** `binds()` but **before** `exports()`:
+Pass an `overrides` callback to `ModuleScope` or `ModuleController`. It runs **after** `binds()` but **before** `exports()`:
 
 ```dart
-// On ModuleController (Dart):
-final controller = ModuleController(
-  NetworkModule(),
-  overrides: (binder) {
-    binder.registerSingleton<ApiService>(FakeApiService());
-  },
-);
-
-// On ModuleScope (Flutter):
+// Flutter:
 ModuleScope(
   module: NetworkModule(),
   overrides: (binder) {
@@ -23,11 +15,17 @@ ModuleScope(
   },
   child: const NetworkPage(),
 )
+
+// Dart only:
+final controller = ModuleController(
+  NetworkModule(),
+  overrides: (binder) {
+    binder.registerSingleton<ApiService>(FakeApiService());
+  },
+);
 ```
 
-:::tip
 Simple overrides only affect the root module's binder. To override bindings inside imported modules, use `ModuleOverrideScope`.
-:::
 
 ## ModuleOverrideScope
 
@@ -35,25 +33,37 @@ A hierarchical tree that maps module types to override callbacks, targeting spec
 
 ```mermaid
 flowchart TB
-    Root[ModuleOverrideScope<br/>selfOverrides]
-    Root --> Child1[AuthModule overrides]
-    Root --> Child2[DataModule overrides]
+    Root["ModuleOverrideScope\nselfOverrides: root overrides"]
+    Root --> Auth["children[AuthModule]\nselfOverrides: auth overrides"]
+    Root --> Data["children[DataModule]\nselfOverrides: data overrides"]
+    Data --> Cache["children[CacheModule]\nselfOverrides: cache overrides"]
 ```
 
 ### Structure
 
 ```dart
 final overrideScope = ModuleOverrideScope(
-  selfOverrides: (binder) { ... },      // Override root module
+  selfOverrides: (binder) {
+    // Override root module bindings
+    binder.registerLazySingleton<Logger>(() => DebugLogger());
+  },
   children: {
     AuthModule: ModuleOverrideScope(
-      selfOverrides: (binder) { ... },   // Override AuthModule
+      selfOverrides: (binder) {
+        // Override AuthModule bindings
+        binder.registerLazySingleton<AuthService>(() => FakeAuthService());
+      },
     ),
     DataModule: ModuleOverrideScope(
-      selfOverrides: (binder) { ... },   // Override DataModule
+      selfOverrides: (binder) {
+        // Override DataModule bindings
+        binder.registerFactory<DataMapper>(() => TestDataMapper());
+      },
       children: {
         CacheModule: ModuleOverrideScope(
-          selfOverrides: (binder) { ... },
+          selfOverrides: (binder) {
+            binder.registerSingleton<CacheConfig>(TestCacheConfig());
+          },
         ),
       },
     ),
@@ -61,74 +71,172 @@ final overrideScope = ModuleOverrideScope(
 );
 ```
 
+### API
+
+| Property / Method | Description |
+|-------------------|-------------|
+| `selfOverrides` | `void Function(Binder)?` applied to the owning module's binder |
+| `children` | `Map<Type, ModuleOverrideScope>` -- per-type overrides for imported modules |
+| `childFor(Type)` | Returns the override scope for a specific imported module type |
+| `withAdditionalOverride(override)` | Creates a new scope chaining `override` after existing `selfOverrides` |
+| `merge(other)` | Combines two scopes: self overrides compose in order, children merge recursively |
+
 ### Usage
 
 ```dart
-final overrideScope = ModuleOverrideScope(
-  children: {
-    AuthModule: ModuleOverrideScope(
-      selfOverrides: (binder) {
-        binder.registerLazySingleton<AuthService>(() => FakeAuthService());
-      },
-    ),
-  },
-);
-
-// On ModuleController:
-final controller = ModuleController(
-  AppModule(),
-  overrideScopeTree: overrideScope,
-);
-
-// On ModuleScope (Flutter):
+// Flutter:
 ModuleScope(
   module: AppModule(),
   overrideScope: overrideScope,
   child: const AppPage(),
 )
+
+// Dart only:
+final controller = ModuleController(
+  AppModule(),
+  overrideScopeTree: overrideScope,
+);
 ```
 
 ### Composing Scopes
 
-**`withAdditionalOverride()`** -- chains an override after existing `selfOverrides`:
+**`withAdditionalOverride()`** chains an override after existing `selfOverrides`:
 
 ```dart
 final extended = baseScope.withAdditionalOverride((binder) {
   binder.registerSingleton<int>(42);
 });
+// baseScope.selfOverrides runs first, then the new override
 ```
 
-**`merge()`** -- combines two scopes; self overrides compose in order, children merge recursively:
+**`merge()`** combines two scopes recursively:
 
 ```dart
 final merged = scopeA.merge(scopeB);
-// scopeA overrides run first, then scopeB
-// Overlapping children are merged recursively
+// scopeA.selfOverrides -> scopeB.selfOverrides
+// Overlapping children merge recursively
 ```
 
-## Override Timing
+## Override Precedence
+
+Overrides are applied in a well-defined order:
 
 ```mermaid
 flowchart LR
-    A[imports resolved] --> B[binds]
-    B --> C[overrides applied]
-    C --> D[exports]
-    D --> E[seal]
-    E --> F[onInit]
+    A[imports resolved] --> B["binds()"]
+    B --> C["overrides applied"]
+    C --> D["exports()"]
+    D --> E["sealPublicScope()"]
+    E --> F["onInit()"]
     style C fill:#ff9,stroke:#333
 ```
 
-::: info
-Overrides run between `binds()` and `exports()`, so they replace private registrations before export. Dependencies resolved via `binder.get<T>()` in `exports()` pick up the overridden instances.
+1. `ModuleOverrideScope.selfOverrides` runs after `binds()` but before `exports()`.
+2. Overrides replace private registrations, so `exports()` sees the overridden instances.
+3. When using `withAdditionalOverride()` or `merge()`, overrides compose left-to-right (first scope's overrides run first).
+4. The `overrides` callback on `ModuleScope` is composed with `overrideScope.selfOverrides` via `withAdditionalOverride()`.
+
+## Use Cases
+
+### Testing -- Replace Real Services with Mocks
+
+```dart
+final testScope = ModuleOverrideScope(
+  children: {
+    AuthModule: ModuleOverrideScope(
+      selfOverrides: (binder) {
+        binder.registerLazySingleton<AuthService>(() => MockAuthService());
+        binder.registerLazySingleton<TokenStore>(() => InMemoryTokenStore());
+      },
+    ),
+  },
+);
+
+ModuleScope(
+  module: AppModule(),
+  overrideScope: testScope,
+  child: const AppPage(),
+)
+```
+
+### Feature Flags -- Swap Implementations
+
+```dart
+ModuleScope(
+  module: PaymentModule(),
+  overrides: (binder) {
+    if (FeatureFlags.newCheckout) {
+      binder.registerLazySingleton<CheckoutFlow>(() => NewCheckoutFlow());
+    }
+  },
+  child: const CheckoutPage(),
+)
+```
+
+### A/B Testing -- Different Implementation per Variant
+
+```dart
+final abScope = ModuleOverrideScope(
+  selfOverrides: (binder) {
+    final variant = AbTestService.variant('onboarding');
+    switch (variant) {
+      case 'control':
+        binder.registerFactory<OnboardingFlow>(() => ClassicOnboarding());
+      case 'experiment':
+        binder.registerFactory<OnboardingFlow>(() => NewOnboarding());
+    }
+  },
+);
+
+ModuleScope(
+  module: OnboardingModule(),
+  overrideScope: abScope,
+  child: const OnboardingPage(),
+)
+```
+
+### Environment-Specific DI
+
+```dart
+ModuleController(
+  AppModule(),
+  overrides: (binder) {
+    if (kDebugMode) {
+      binder.registerSingleton<AnalyticsService>(NoOpAnalytics());
+    }
+  },
+);
+```
+
+## Interaction with Retention
+
+::: warning
+`overrideScope` does **not** affect `retentionKey`. Two `ModuleScope` widgets with the same retention key but different override scopes **share** the same cached controller -- the first scope's overrides win.
+
+To make overrides affect caching, include the scope identity in the retention key:
+
+```dart
+ModuleScope(
+  module: MyModule(),
+  retentionPolicy: ModuleRetentionPolicy.keepAlive,
+  retentionKey: 'my-module-${identityHashCode(overrideScope)}',
+  overrideScope: overrideScope,
+  child: child,
+)
+```
 :::
 
-::: tip Hot Reload
-During `hotReload()`, overrides are re-applied with the same timing -- no additional setup needed.
-:::
+See [Module Retention](./module-retention.md) for details on retention keys.
+
+## Interaction with Hot Reload
+
+Overrides are automatically re-applied during `hotReload()` with the same timing -- no additional setup needed. Your test fakes and debug stubs survive hot reload.
+
+See [Hot Reload](./hot-reload.md) for the full flow.
 
 ## Interceptors
 
-`ModuleInterceptor` provides lifecycle hooks for cross-cutting concerns:
+`ModuleInterceptor` provides lifecycle hooks for cross-cutting concerns without modifying module code:
 
 ```dart
 class TimingInterceptor implements ModuleInterceptor {
@@ -142,12 +250,12 @@ class TimingInterceptor implements ModuleInterceptor {
   @override
   void onLoaded(Module module) {
     final elapsed = _timers[module.runtimeType]?.elapsed;
-    print('${module.runtimeType} loaded in $elapsed');
+    debugPrint('${module.runtimeType} loaded in $elapsed');
   }
 
   @override
   void onError(Module module, Object error) {
-    print('${module.runtimeType} failed: $error');
+    debugPrint('${module.runtimeType} failed: $error');
   }
 
   @override
@@ -164,7 +272,7 @@ class TimingInterceptor implements ModuleInterceptor {
 | `onError(module, error)` | When initialization throws |
 | `onDispose(module)` | When the module is disposed |
 
-### Per-controller vs Global
+### Per-Controller vs Global
 
 ```dart
 // Per-controller:
@@ -179,7 +287,7 @@ void main() {
 
 ## Lifecycle Logging
 
-Built-in logging for module retention events (creation, reuse, disposal, cache operations).
+Built-in logging for module retention events:
 
 ```dart
 // Enable console logging:
@@ -194,14 +302,7 @@ Modularity.lifecycleLogger = (event, moduleType, {retentionKey, details}) {
 Modularity.disableLogging();
 ```
 
-Output example:
-```
-[Modularity] CREATED ProfileModule key=ProfileModule-/profile
-[Modularity] REUSED ProfileModule key=ProfileModule-/profile
-[Modularity] EVICTED ProfileModule key=ProfileModule-/profile
-```
-
-::: details ModuleLifecycleEvent enum values
+::: details ModuleLifecycleEvent values
 
 | Event | Description |
 |-------|-------------|
@@ -211,35 +312,6 @@ Output example:
 | `disposed` | Controller disposed |
 | `evicted` | Controller evicted from retention cache |
 | `released` | Controller released (ref count decremented) |
-| `routeTerminated` | Route termination triggered controller cleanup |
+| `routeTerminated` | Route termination triggered cleanup |
 
 :::
-
-## Common Use Cases
-
-### Feature flags
-
-```dart
-ModuleScope(
-  module: PaymentModule(),
-  overrides: (binder) {
-    if (FeatureFlags.newCheckout) {
-      binder.registerLazySingleton<CheckoutFlow>(() => NewCheckoutFlow());
-    }
-  },
-  child: const CheckoutPage(),
-)
-```
-
-### Environment-specific DI
-
-```dart
-ModuleController(
-  AppModule(),
-  overrides: (binder) {
-    if (kDebugMode) {
-      binder.registerSingleton<AnalyticsService>(NoOpAnalytics());
-    }
-  },
-);
-```

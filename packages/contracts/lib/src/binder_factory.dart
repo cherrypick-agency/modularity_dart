@@ -2,9 +2,26 @@ import 'binder.dart';
 
 /// Factory for creating [Binder] instances.
 ///
-/// Swap the DI container implementation (e.g. `GetItBinder`, `SimpleBinder`)
-/// by providing a different factory to the engine.
+/// Provide a custom [BinderFactory] to the `ModuleController` to swap the
+/// DI container implementation (e.g. `GetItBinder` instead of the default
+/// `SimpleBinder`).
+///
+/// ```dart
+/// class GetItBinderFactory implements BinderFactory {
+///   @override
+///   Binder create([Binder? parent]) => GetItBinder(parent: parent);
+/// }
+///
+/// final controller = ModuleController(
+///   AppModule(),
+///   binderFactory: GetItBinderFactory(),
+/// );
+/// ```
+///
+/// See also:
+/// - [Binder] for the interface that created instances must implement.
 abstract class BinderFactory {
-  /// Create a new [Binder], optionally linked to a [parent] scope.
+  /// Creates a new [Binder], optionally chaining it to a [parent] scope
+  /// for hierarchical resolution.
   Binder create([Binder? parent]);
 }

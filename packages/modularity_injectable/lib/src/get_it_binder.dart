@@ -4,15 +4,26 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 /// [Binder] implementation backed by two separate [GetIt] instances (private
 /// and public scopes), designed for integration with the `injectable` package.
 ///
-/// This variant lives in `modularity_injectable` and manages two isolated
-/// [GetIt] containers: one for private module registrations and another for
-/// publicly exported dependencies. It tracks registered types manually to
-/// support [ExportableBinder] semantics.
+/// Manages two isolated [GetIt] containers: one for private module
+/// registrations and another for publicly exported dependencies. Tracks
+/// registered types manually to support [ExportableBinder] semantics.
 ///
-/// **Note:** A different class also named `GetItBinder` exists in
-/// `modularity_get_it` (the standalone adapter). That variant uses a single
-/// scoped [GetIt] instance together with [RegistrationAwareBinder] support.
+/// ## Resolution Order
+///
+/// When [get] or [tryGet] is called, lookup proceeds as:
+/// 1. Private [GetIt] scope.
+/// 2. Public [GetIt] scope.
+/// 3. Imported binders (public exports only).
+/// 4. Parent binder (if any).
+///
+/// **Note:** A different class also named `GetItBinder` exists in the
+/// `modularity_get_it` standalone adapter package. That variant uses a single
+/// scoped [GetIt] instance with [RegistrationAwareBinder] support.
 /// Choose the implementation that matches your integration needs.
+///
+/// See also:
+/// - [GetItBinderFactory] which produces these binders.
+/// - [ModularityInjectableBridge] for wiring injectable init functions.
 class GetItBinder implements ExportableBinder, DisposableBinder {
   /// Create a binder with optional [imports] and [parent] scope.
   ///
@@ -256,7 +267,18 @@ class GetItBinder implements ExportableBinder, DisposableBinder {
   }
 }
 
-/// [BinderFactory] that produces [GetItBinder] instances.
+/// [BinderFactory] that produces [GetItBinder] instances for the
+/// `modularity_injectable` integration.
+///
+/// Pass this to [ModularityRoot] or [ModuleController] when using the
+/// `injectable` code-generation package.
+///
+/// ```dart
+/// ModularityRoot(
+///   binderFactory: const GetItBinderFactory(),
+///   child: const MyApp(),
+/// )
+/// ```
 class GetItBinderFactory implements BinderFactory {
   /// Create a const factory.
   const GetItBinderFactory();

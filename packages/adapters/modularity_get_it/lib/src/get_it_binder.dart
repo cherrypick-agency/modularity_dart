@@ -5,16 +5,29 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 /// Standalone [Binder] implementation backed by a single scoped [GetIt]
 /// instance, with [RegistrationAwareBinder] support for strategy switching.
 ///
-/// This variant lives in the `modularity_get_it` adapter package. It uses one
-/// [GetIt] container for both private and exported registrations, tracking
-/// exported types via an internal set. It also supports
-/// [RegistrationAwareBinder] which enables switching between `replace` and
-/// `preserveExisting` strategies at runtime (useful for hot reload).
+/// Uses one [GetIt] container for both private and exported registrations,
+/// tracking exported types via an internal set.
 ///
-/// **Note:** A different class also named `GetItBinder` exists in
-/// `modularity_injectable`. That variant manages two separate [GetIt]
-/// instances (private + public) and is designed for `injectable` package
-/// integration. Choose the implementation that matches your integration needs.
+/// ## Registration Strategies
+///
+/// Supports [RegistrationAwareBinder] which enables switching between
+/// `replace` and `preserveExisting` strategies at runtime. This is useful
+/// for hot reload, where existing registrations should be preserved while
+/// factory delegates are updated.
+///
+/// ## Resolution Order
+///
+/// When [get] or [tryGet] is called, lookup proceeds as:
+/// 1. Local [GetIt] container.
+/// 2. Imported binders (public exports only).
+/// 3. Parent binder (if any).
+///
+/// **Note:** A different class also named `GetItBinder` exists in the
+/// `modularity_injectable` package. That variant manages two separate [GetIt]
+/// instances (private + public) and is designed for `injectable` code-gen.
+///
+/// See also:
+/// - [GetItBinderFactory] which produces these binders.
 class GetItBinder
     implements ExportableBinder, RegistrationAwareBinder, DisposableBinder {
   /// Create a binder optionally linked to a [_parent] scope.

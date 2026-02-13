@@ -20,6 +20,20 @@ enum GraphRenderer {
 ///
 /// Supports both static Graphviz DOT diagrams and interactive AntV G6
 /// visualizations through the [GraphRenderer] selection.
+///
+/// ## Usage
+///
+/// ```dart
+/// // Interactive G6 visualization
+/// await GraphVisualizer.visualize(AppModule(), renderer: GraphRenderer.g6);
+///
+/// // Static Graphviz DOT diagram
+/// await GraphVisualizer.visualize(AppModule());
+/// ```
+///
+/// See also:
+/// - [GraphRenderer] for available rendering backends.
+/// - [ModuleBindingsAnalyzer] for the underlying analysis.
 class GraphVisualizer {
   /// Generates a dependency graph for the given [rootModule] and opens it in the browser.
   ///

@@ -4,11 +4,28 @@ import '../engine/module_controller.dart';
 import '../engine/module_override_scope.dart';
 import 'module_registry_key.dart';
 
-/// Service for resolving module dependencies (Imports).
-/// Responsible for finding, creating, and initializing imported modules.
+/// Resolves the module import graph and initializes dependencies
+/// concurrently.
+///
+/// For each import declared by a [Module], the resolver:
+/// 1. Checks for circular dependencies using a per-branch [resolutionStack].
+/// 2. Looks up (or creates) a [ModuleController] in the shared [registry]
+///    to avoid duplicate initialization.
+/// 3. Initializes the controller if it has not started yet, or waits for
+///    an in-progress initialization triggered by a concurrent branch.
+///
+/// All import branches are resolved in parallel via [Future.wait],
+/// maximizing throughput for large module graphs.
+///
+/// See also:
+/// - [ModuleController.initialize] which delegates to this resolver.
+/// - [ModuleRegistryKey] for identity semantics.
 class GraphResolver {
-  /// Recursively resolves and initializes imports.
-  /// Returns a list of dependency controllers.
+  /// Recursively resolves and initializes the imports of [module].
+  ///
+  /// Returns the list of [ModuleController]s for the direct imports.
+  /// Throws [CircularDependencyException] or [ModuleLifecycleException]
+  /// if resolution fails.
   Future<List<ModuleController>> resolveAndInitImports(
     Module module,
     Map<ModuleRegistryKey, ModuleController> registry,

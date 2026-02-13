@@ -1,6 +1,9 @@
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-/// Classify how a dependency is registered in a [Binder].
+/// Classification of how a dependency is registered in a [Binder].
+///
+/// Used by [DependencyRecord] and [RecordingBinder] to track the strategy
+/// used when a type is registered.
 enum DependencyRegistrationKind {
   /// Registered as a lazy singleton that is created on first access.
   singleton,
@@ -27,7 +30,10 @@ extension DependencyRegistrationKindLabel on DependencyRegistrationKind {
   }
 }
 
-/// Hold metadata about a single dependency registration.
+/// Metadata about a single dependency registration captured by
+/// [RecordingBinder].
+///
+/// Contains the registered [type] and the [kind] of registration strategy.
 class DependencyRecord {
   /// Create a record for the given [type] registered with [kind].
   DependencyRecord(this.type, this.kind);
@@ -42,10 +48,21 @@ class DependencyRecord {
   String get displayName => '${type.toString()} [${kind.label}]';
 }
 
-/// [Binder] implementation that records registrations without instantiating them.
+/// [Binder] implementation that records registrations without instantiating
+/// any dependencies.
 ///
 /// Used by [ModuleBindingsAnalyzer] to introspect which types a module
-/// registers during its `binds` and `exports` phases.
+/// registers during its `binds` and `exports` phases. Calling [get] throws
+/// because analysis-time resolution is not supported.
+///
+/// ```dart
+/// final binder = RecordingBinder();
+/// myModule.binds(binder);
+/// print(binder.privateDependencies); // recorded types
+/// ```
+///
+/// See also:
+/// - [ModuleBindingsAnalyzer] which uses this binder internally.
 class RecordingBinder implements ExportableBinder {
   /// Create a recording binder with optional [imports] and [parent] scope.
   RecordingBinder({List<Binder> imports = const [], Binder? parent})

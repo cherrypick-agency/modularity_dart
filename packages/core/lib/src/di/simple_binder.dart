@@ -9,11 +9,34 @@ class _Registration {
   Object? instance;
 }
 
-/// Simple Map-based Binder implementation.
-/// Supports separation into Public (Exports) and Private (Binds) dependencies.
+/// Pure-Dart, map-based [Binder] implementation with no external dependencies.
+///
+/// [SimpleBinder] maintains two separate registration maps — **private** and
+/// **public** — to support the [ExportableBinder] contract. It also
+/// implements [RegistrationAwareBinder] for hot-reload support and
+/// [DisposableBinder] for resource cleanup.
+///
+/// Dependency resolution follows the order:
+/// 1. Local private scope
+/// 2. Local public scope
+/// 3. Imported binders (public exports only)
+/// 4. Parent binder
+///
+/// ```dart
+/// final binder = SimpleBinder();
+/// binder.registerLazySingleton<Logger>(() => ConsoleLogger());
+/// binder.registerFactory<ApiClient>(() => ApiClient(binder.get<Logger>()));
+///
+/// final client = binder.get<ApiClient>(); // new instance each time
+/// ```
+///
+/// See also:
+/// - [SimpleBinderFactory] which produces [SimpleBinder] instances.
+/// - [ExportableBinder] for the public/private scope contract.
 class SimpleBinder
     implements ExportableBinder, RegistrationAwareBinder, DisposableBinder {
-  /// Create a [SimpleBinder] with optional imported [Binder] list and parent scope.
+  /// Creates a [SimpleBinder] with optional imported binders and a [parent]
+  /// scope for hierarchical resolution.
   SimpleBinder({List<Binder> imports = const [], Binder? parent})
     : _imports = imports.toList(),
       _parent = parent;
@@ -281,7 +304,8 @@ class SimpleBinder
     }
   }
 
-  /// Simple text diagnostics of the current binder state.
+  /// Returns a human-readable text dump of the current binder state,
+  /// listing private and public registrations (and optionally imports).
   String debugGraph({bool includeImports = false}) {
     final buffer = StringBuffer()
       ..writeln('SimpleBinder(${hashCode.toRadixString(16)})')

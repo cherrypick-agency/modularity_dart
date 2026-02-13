@@ -1,17 +1,51 @@
 import 'module.dart';
 
-/// Interceptor for Module Lifecycle events.
-/// Allows global logging, analytics, or debugging hooks.
+/// Observer for [Module] lifecycle events.
+///
+/// Implement this interface to add cross-cutting concerns such as logging,
+/// analytics, or performance monitoring to every module in the graph.
+///
+/// Pass interceptors to the `ModuleController` constructor:
+///
+/// ```dart
+/// class TimingInterceptor implements ModuleInterceptor {
+///   final _timers = <Type, Stopwatch>{};
+///
+///   @override
+///   void onInit(Module module) {
+///     _timers[module.runtimeType] = Stopwatch()..start();
+///   }
+///
+///   @override
+///   void onLoaded(Module module) {
+///     final elapsed = _timers[module.runtimeType]?.elapsed;
+///     print('${module.runtimeType} loaded in $elapsed');
+///   }
+///
+///   @override
+///   void onError(Module module, Object error) {
+///     print('${module.runtimeType} failed: $error');
+///   }
+///
+///   @override
+///   void onDispose(Module module) {
+///     _timers.remove(module.runtimeType);
+///   }
+/// }
+/// ```
+///
+/// See also:
+/// - [Module] for the lifecycle hooks that trigger these callbacks.
 abstract class ModuleInterceptor {
-  /// Called before module initialization starts.
+  /// Called before [Module.onInit] starts.
   void onInit(Module module);
 
-  /// Called when module is successfully loaded.
+  /// Called after [Module.onInit] completes successfully.
   void onLoaded(Module module);
 
-  /// Called when module initialization fails.
+  /// Called when module initialization fails with [error].
   void onError(Module module, Object error);
 
-  /// Called when module is disposed.
+  /// Called when the module is being disposed.
   void onDispose(Module module);
 }

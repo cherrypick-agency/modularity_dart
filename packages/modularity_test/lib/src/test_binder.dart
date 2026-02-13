@@ -1,12 +1,28 @@
 import 'package:modularity_contracts/modularity_contracts.dart';
 
-/// A Proxy Binder implementation that records all interactions.
-/// Useful for testing module behavior.
+/// Proxy [Binder] implementation that records all registrations and
+/// resolutions, useful for testing module behavior.
+///
+/// Wraps a real [Binder] delegate and tracks every `registerLazySingleton`,
+/// `registerFactory`, `registerSingleton`, `get`, and `tryGet` call. After
+/// module initialization, use inspection methods to assert registration
+/// behavior:
+///
+/// ```dart
+/// await testModule(MyModule(), (module, binder) {
+///   expect(binder.hasSingleton<MyService>(), isTrue);
+///   expect(binder.hasFactory<MyRepo>(), isTrue);
+///   expect(binder.wasResolved<MyService>(), isFalse);
+/// });
+/// ```
 ///
 /// Implements [ExportableBinder] so it can be used in place of any binder
 /// in tests that exercise export-mode registrations. When the underlying
 /// delegate is itself an [ExportableBinder], calls are forwarded; otherwise
 /// the export-mode methods operate on local tracking state only.
+///
+/// See also:
+/// - [testModule] which creates and uses this binder automatically.
 class TestBinder implements ExportableBinder {
   /// Create a test binder wrapping the given [_delegate].
   TestBinder(this._delegate);
@@ -21,21 +37,21 @@ class TestBinder implements ExportableBinder {
   bool _isExportMode = false;
   bool _publicSealed = false;
 
-  /// List of types registered as Singletons.
+  /// Unmodifiable list of types registered via [registerLazySingleton].
   List<Type> get registeredSingletons =>
       List.unmodifiable(_registeredSingletons);
 
-  /// List of types registered as Eager Singletons.
+  /// Unmodifiable list of types registered as eager singletons.
   List<Type> get registeredEagerSingletons =>
       List.unmodifiable(_registeredEagerSingletons);
 
-  /// List of types registered as Factories.
+  /// Unmodifiable list of types registered via [registerFactory].
   List<Type> get registeredFactories => List.unmodifiable(_registeredFactories);
 
-  /// List of types registered as Instances.
+  /// Unmodifiable list of types registered via [registerSingleton].
   List<Type> get registeredInstances => List.unmodifiable(_registeredInstances);
 
-  /// List of types that were resolved (get/tryGet).
+  /// Unmodifiable list of types that were resolved via [get] or [tryGet].
   List<Type> get resolvedTypes => List.unmodifiable(_resolvedTypes);
 
   @override
@@ -88,16 +104,16 @@ class TestBinder implements ExportableBinder {
     return _delegate.contains(type);
   }
 
-  /// Checks if a type was registered as Singleton.
+  /// Returns `true` if [T] was registered via [registerLazySingleton].
   bool hasSingleton<T>() => _registeredSingletons.contains(T);
 
-  /// Checks if a type was registered as Factory.
+  /// Returns `true` if [T] was registered via [registerFactory].
   bool hasFactory<T>() => _registeredFactories.contains(T);
 
-  /// Checks if a type was registered as Instance.
+  /// Returns `true` if [T] was registered via [registerSingleton].
   bool hasInstance<T>() => _registeredInstances.contains(T);
 
-  /// Checks if a type was resolved.
+  /// Returns `true` if [T] was resolved via [get] or [tryGet].
   bool wasResolved<T>() => _resolvedTypes.contains(T);
 
   // -- ExportableBinder implementation --

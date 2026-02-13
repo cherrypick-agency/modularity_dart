@@ -1,96 +1,163 @@
 /// Defines the strategy for handling duplicate dependency registrations.
+///
+/// Used by [RegistrationAwareBinder] to control what happens when a type
+/// is registered more than once (e.g. during hot reload).
 enum RegistrationStrategy {
   /// Re-registration replaces the previous value (default).
   replace,
 
   /// Re-registration preserves existing singletons/instances and
   /// only updates factories.
+  ///
+  /// Useful during hot reload: singleton state is kept while factory
+  /// closures are refreshed to pick up code changes.
   preserveExisting,
 }
 
-/// Interface for registering dependencies.
-/// Abstracts the concrete DI implementation (be it GetIt, a map, or anything else).
+/// Core interface for registering and resolving dependencies.
+///
+/// [Binder] abstracts the concrete DI container (be it GetIt, a simple map,
+/// or any other implementation) behind a uniform API used by [Module.binds]
+/// and [Module.exports].
+///
+/// Dependency resolution follows the order: **Local -> Imports -> Parent**.
+///
+/// ```dart
+/// class NetworkModule extends Module {
+///   @override
+///   void binds(Binder i) {
+///     i.registerLazySingleton<HttpClient>(() => HttpClient());
+///     i.registerFactory<ApiService>(() => ApiService(i.get<HttpClient>()));
+///   }
+/// }
+/// ```
+///
+/// See also:
+/// - [ExportableBinder] for modules that expose dependencies publicly.
+/// - [DisposableBinder] for binders that support resource cleanup.
+/// - [RegistrationAwareBinder] for hot-reload-aware binders.
 abstract class Binder {
-  /// Registers a lazy singleton.
-  /// Created once on first request.
+  /// Registers a lazy singleton of type [T].
+  ///
+  /// The [factory] closure is called **once** on the first [get] call;
+  /// subsequent calls return the cached instance.
   void registerLazySingleton<T extends Object>(T Function() factory);
 
-  /// Registers a factory.
-  /// Creates a new instance on every request.
+  /// Registers a factory for type [T].
+  ///
+  /// The [factory] closure is called on **every** [get] call, producing
+  /// a new instance each time.
   void registerFactory<T extends Object>(T Function() factory);
 
-  /// Registers an already-created instance (Eager Singleton).
-  /// Replaces the legacy [instance] and [eagerSingleton] methods.
+  /// Registers an already-created [instance] as an eager singleton of type [T].
   void registerSingleton<T extends Object>(T instance);
 
-  /// Retrieves a dependency of type [T].
-  /// [moduleId] is an optional module identifier for scoping.
+  /// Resolves a dependency of type [T].
+  ///
+  /// Throws [DependencyNotFoundException] if the type is not registered.
   T get<T extends Object>();
 
-  /// Attempts to retrieve a dependency, returns null if not found.
+  /// Attempts to resolve a dependency of type [T].
+  ///
+  /// Returns `null` instead of throwing when the type is not found.
   T? tryGet<T extends Object>();
 
-  /// Retrieves a dependency from the parent scope (Explicit Parent Lookup).
+  /// Resolves a dependency of type [T] from the parent scope.
+  ///
+  /// Throws [DependencyNotFoundException] if the parent scope does not
+  /// contain the requested type.
   T parent<T extends Object>();
 
-  /// Attempts to retrieve a dependency from the parent scope.
+  /// Attempts to resolve a dependency of type [T] from the parent scope.
+  ///
+  /// Returns `null` when the parent scope does not contain the type.
   T? tryParent<T extends Object>();
 
-  /// Adds external binders (imports) to search for dependencies.
+  /// Appends [binders] to the list of imported scopes searched during
+  /// dependency resolution.
   void addImports(List<Binder> binders);
 
-  /// Checks whether a dependency of the given type exists (including parents and imports).
+  /// Returns `true` if [type] is registered in any reachable scope
+  /// (local, imports, or parent chain).
   bool contains(Type type);
 }
 
-/// Extended interface for Binder that supports exporting dependencies.
+/// Extended [Binder] that separates registrations into private and public
+/// (exported) scopes.
+///
+/// Dependencies registered while [isExportModeEnabled] is `true` go to the
+/// public scope and become visible to modules that import this one.
+/// Dependencies registered in the default (private) mode are only accessible
+/// within the owning module.
+///
+/// See also:
+/// - [Binder] for the base registration/resolution API.
+/// - [Module.exports] where export mode is used.
 abstract class ExportableBinder implements Binder {
-  /// Enables export mode (registrations go to the public scope).
+  /// Enables export mode so that subsequent registrations go to the
+  /// public scope.
   void enableExportMode();
 
-  /// Disables export mode (registrations go to the private scope).
+  /// Disables export mode so that subsequent registrations go to the
+  /// private scope.
   void disableExportMode();
 
-  /// Attempts to retrieve a dependency ONLY from the public scope.
+  /// Resolves a dependency of type [T] from the **public scope only**.
+  ///
+  /// Used internally when resolving imports between modules.
   T? tryGetPublic<T extends Object>();
 
-  /// Checks whether a public dependency of the given type exists.
+  /// Returns `true` if [type] is registered in the public (exported) scope.
   bool containsPublic(Type type);
 
-  /// Marks the public scope as sealed after exports are complete.
-  /// After this call, new export-mode registrations are rejected until
-  /// [resetPublicScope] explicitly reopens it (e.g. for hot reload).
+  /// Seals the public scope so that further export-mode registrations
+  /// throw [ModuleConfigurationException].
+  ///
+  /// Call [resetPublicScope] to reopen it (e.g. for hot reload).
   void sealPublicScope();
 
-  /// Resets the public scope seal flag. Needed for hot reload
-  /// when factories need to be updated without creating a new Binder.
+  /// Reopens a sealed public scope, allowing new export-mode registrations.
+  ///
+  /// Typically called during hot reload to update factory closures.
   void resetPublicScope();
 
-  /// Flag indicating whether export mode is currently active.
+  /// Whether export mode is currently active.
   bool get isExportModeEnabled;
 
-  /// Flag indicating whether the public scope has been sealed.
+  /// Whether the public scope has been sealed.
   bool get isPublicScopeSealed;
 }
 
 /// Contract for a [Binder] that supports explicit disposal of resources.
 ///
 /// Implementations should release all internal registrations when [dispose]
-/// is called. The [ModuleController] checks for this interface during its
+/// is called. The `ModuleController` checks for this interface during its
 /// own disposal to ensure binder resources are freed regardless of the
 /// concrete binder type.
+///
+/// See also:
+/// - [Binder] for the base registration/resolution API.
 abstract class DisposableBinder implements Binder {
-  /// Release all resources held by this binder.
+  /// Releases all resources held by this binder, clearing every
+  /// registration in both private and public scopes.
   Future<void> dispose();
 }
 
-/// Additional contract for a Binder that can switch its registration
-/// strategy at runtime (e.g. for hot reload).
+/// Contract for a [Binder] that can switch its [RegistrationStrategy]
+/// at runtime.
+///
+/// This is primarily used during hot reload: the engine temporarily
+/// switches to [RegistrationStrategy.preserveExisting] so that
+/// singleton state survives while factory closures are refreshed.
+///
+/// See also:
+/// - [RegistrationStrategy] for the available strategies.
+/// - [Binder] for the base registration/resolution API.
 abstract class RegistrationAwareBinder implements Binder {
-  /// The current registration strategy.
+  /// The currently active [RegistrationStrategy].
   RegistrationStrategy get registrationStrategy;
 
-  /// Executes [body] with the given [strategy], automatically restoring
-  /// the previous strategy when [body] completes.
+  /// Executes [body] under the given [strategy], automatically restoring
+  /// the previous strategy when [body] completes (even if it throws).
   T runWithStrategy<T>(RegistrationStrategy strategy, T Function() body);
 }

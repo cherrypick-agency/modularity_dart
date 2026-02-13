@@ -3,16 +3,24 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:modularity_contracts/modularity_contracts.dart' as contracts;
 
-/// GetIt wrapper that falls back to Modularity's Binder chain on resolve.
+/// [GetIt] wrapper that falls back to Modularity's [Binder] chain on resolve.
 ///
-/// This is the missing piece for integrating `injectable` with Modularity:
-/// injectable-generated factories call `getIt.get<T>()` for dependencies.
-/// With this wrapper, those calls automatically resolve through:
-/// Local(GetIt scope) -> Imports(public) -> Parent, matching Modularity rules.
+/// This is the integration layer between `injectable`-generated factories and
+/// the Modularity DI system. When injectable factories call
+/// `getIt.get<T>()`, this wrapper resolves through:
 ///
-/// Notes:
-/// - Named registrations (`instanceName`) and factory params are delegated to the
-///   underlying GetIt only. Modularity Binder does not support those concepts.
+/// 1. Local [GetIt] scope (the [primary] container).
+/// 2. Modularity [Binder] chain (imports -> parent).
+///
+/// This allows injectable-registered types to depend on types from imported
+/// or parent modules without explicit cross-registration.
+///
+/// Named registrations (`instanceName`) and factory params are delegated to
+/// the underlying [GetIt] only, as the Modularity [Binder] interface does
+/// not support those concepts.
+///
+/// See also:
+/// - [ModularityInjectableBridge] which creates [BinderGetIt] instances.
 class BinderGetIt implements GetIt {
   /// Create a [BinderGetIt] wrapping the given [primary] GetIt instance
   /// and falling back to [binder] for unresolved lookups.

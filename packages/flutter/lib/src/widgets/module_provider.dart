@@ -7,6 +7,23 @@ import 'package:modularity_core/modularity_core.dart';
 /// Typically inserted by [ModuleScope]; consumers obtain the [Binder] via
 /// [ModuleProvider.of] or retrieve the typed [Module] via
 /// [ModuleProvider.moduleOf].
+///
+/// ## Resolving Dependencies
+///
+/// ```dart
+/// final binder = ModuleProvider.of(context);
+/// final service = binder.get<MyService>();
+/// ```
+///
+/// ## Accessing the Module Instance
+///
+/// ```dart
+/// final module = ModuleProvider.moduleOf<AuthModule>(context);
+/// ```
+///
+/// See also:
+/// - [ModuleScope] which creates and provides this widget.
+/// - [ModularityRoot] for top-level DI configuration.
 class ModuleProvider extends InheritedWidget {
   /// Create a [ModuleProvider] that exposes [controller] to [child].
   const ModuleProvider({

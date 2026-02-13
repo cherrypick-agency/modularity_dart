@@ -3,14 +3,18 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 
 /// Derive a stable cache key for a [Module] within the retention system.
 ///
-/// If [explicitKey] is provided it is returned as-is. Otherwise a composite
-/// key is computed from the module type, the enclosing route, [args],
-/// [parentKey], and [extras].
+/// The key uniquely identifies a [ModuleController] within the
+/// [ModuleRetainer] cache. Identical keys cause the retainer to return the
+/// same cached controller.
 ///
-/// When the [module] implements [RetentionIdentityProvider], the module is
-/// given the opportunity to supply a custom identity via
-/// [RetentionIdentityProvider.buildRetentionIdentity]. If it returns `null`,
-/// the default composite hash is used instead.
+/// ## Resolution Order
+///
+/// 1. If [explicitKey] is provided, it is returned as-is.
+/// 2. If the [module] implements [RetentionIdentityProvider], its
+///    [RetentionIdentityProvider.buildRetentionIdentity] is called. A non-null
+///    result is returned directly.
+/// 3. Otherwise a composite hash is computed from the module type, the
+///    enclosing route, [args], [parentKey], and [extras].
 Object deriveRetentionKey({
   required Module module,
   required BuildContext context,

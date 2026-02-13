@@ -25,6 +25,14 @@ jobs:
           channel: stable
           cache: true
 
+      # Cache Dart pub dependencies for faster builds
+      - name: Cache Dart pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -34,6 +42,7 @@ jobs:
       - name: Install dartdoc-vitepress
         run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git
 
+      # Generate API docs and sidebar files from Dart source code
       - name: Generate API docs
         run: |
           dart pub global run dartdoc_vitepress \

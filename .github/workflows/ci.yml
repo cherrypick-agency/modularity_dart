@@ -20,6 +20,14 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # Cache Dart pub dependencies for faster builds
+      - name: Cache Dart pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
       - name: Install Melos
         run: dart pub global activate melos
 

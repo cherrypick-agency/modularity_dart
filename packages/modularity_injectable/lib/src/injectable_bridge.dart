@@ -14,11 +14,37 @@ typedef InjectableInitFn =
       EnvironmentFilter? environmentFilter,
     });
 
-/// Helper that wires injectable-generated functions into the Modularity lifecycle.
+/// Helper that wires injectable-generated init functions into the Modularity
+/// module lifecycle.
+///
+/// Call [configureInternal] from `Module.binds` to register private
+/// dependencies, and [configureExports] from `Module.exports` to register
+/// only those dependencies annotated with [modularityExportEnv].
+///
+/// Requires a [GetItBinder] as the active binder (provided by
+/// [GetItBinderFactory]).
+///
+/// ```dart
+/// class AuthModule extends Module {
+///   @override
+///   void binds(Binder binder) {
+///     ModularityInjectableBridge.configureInternal(binder, configureDependencies);
+///   }
+///
+///   @override
+///   void exports(Binder binder) {
+///     ModularityInjectableBridge.configureExports(binder, configureDependencies);
+///   }
+/// }
+/// ```
 class ModularityInjectableBridge {
   const ModularityInjectableBridge._();
 
-  /// Registers all private dependencies inside Module.binds.
+  /// Registers all private dependencies inside `Module.binds`.
+  ///
+  /// Wraps the [binder]'s internal container with [BinderGetIt] so
+  /// injectable-generated factories can resolve cross-module dependencies
+  /// through the Modularity binder chain.
   static void configureInternal(
     contracts.Binder binder,
     InjectableInitFn initFn,
@@ -29,7 +55,11 @@ class ModularityInjectableBridge {
     );
   }
 
-  /// Registers only export-marked dependencies inside Module.exports.
+  /// Registers only export-marked dependencies inside `Module.exports`.
+  ///
+  /// Uses [ModularityExportOnly] as the environment filter, so only
+  /// dependencies annotated with `@Environment(modularityExportEnvName)` or
+  /// `@modularityExportEnv` are processed.
   static void configureExports(
     contracts.Binder binder,
     InjectableInitFn initFn,

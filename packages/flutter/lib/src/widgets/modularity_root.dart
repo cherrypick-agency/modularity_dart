@@ -3,8 +3,29 @@ import 'package:modularity_core/modularity_core.dart';
 
 import '../retention/module_retainer.dart';
 
-/// Root widget for the framework.
-/// Holds the global registry of active modules and DI configuration.
+/// Root inherited widget for the Modularity framework.
+///
+/// Provides DI configuration, a shared [ModuleRetainer], and a global module
+/// registry to the entire widget subtree. Must be placed above all
+/// [ModuleScope] widgets in the tree.
+///
+/// ## Usage
+///
+/// ```dart
+/// ModularityRoot(
+///   binderFactory: SimpleBinderFactory(),
+///   defaultLoadingBuilder: (_) => const CircularProgressIndicator(),
+///   defaultErrorBuilder: (_, error, retry) => ErrorWidget(error),
+///   child: MaterialApp(
+///     navigatorObservers: [Modularity.observer],
+///     home: const HomePage(),
+///   ),
+/// )
+/// ```
+///
+/// See also:
+/// - [ModuleScope] which uses the configuration provided by this widget.
+/// - [Modularity] for global observer, interceptors, and lifecycle logging.
 class ModularityRoot extends InheritedWidget {
   /// Create the root inherited widget that provides DI configuration and a
   /// shared [ModuleRetainer] to the widget subtree.

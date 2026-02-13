@@ -11,13 +11,27 @@ import 'module_provider.dart';
 
 /// Widget that manages the lifecycle of a [Module] and exposes its DI container.
 ///
+/// [ModuleScope] creates a [ModuleController], initializes the module, and
+/// provides the resulting [Binder] to descendants via [ModuleProvider]. It
+/// handles loading and error states and supports configurable retention
+/// policies that control when the controller is disposed or reused.
+///
+/// ## Basic Usage
+///
+/// ```dart
+/// ModuleScope<AuthModule>(
+///   module: AuthModule(),
+///   child: const AuthPage(),
+/// )
+/// ```
+///
 /// ## Retention Policy
 ///
 /// Controls how the [ModuleController] is retained across widget rebuilds:
 ///
-/// - [ModuleRetentionPolicy.strict]: Controller disposed on every unmount.
-/// - [ModuleRetentionPolicy.routeBound]: Controller disposed when route pops.
-/// - [ModuleRetentionPolicy.keepAlive]: Controller cached in [ModuleRetainer],
+/// - [ModuleRetentionPolicy.strict] -- controller disposed on every unmount.
+/// - [ModuleRetentionPolicy.routeBound] -- controller disposed when route pops.
+/// - [ModuleRetentionPolicy.keepAlive] -- controller cached in [ModuleRetainer],
 ///   survives widget unmount, disposed on route termination or explicit eviction.
 ///
 /// ## Retention Key vs Override Scope
@@ -41,6 +55,10 @@ import 'module_provider.dart';
 ///   child: ...,
 /// )
 /// ```
+///
+/// See also:
+/// - [ModuleProvider] for accessing the module's [Binder] from descendants.
+/// - [ModularityRoot] for top-level DI configuration.
 class ModuleScope<T extends Module> extends StatefulWidget {
   /// Create a [ModuleScope] that manages the lifecycle of [module].
   const ModuleScope({

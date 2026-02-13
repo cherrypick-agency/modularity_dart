@@ -1,6 +1,15 @@
 /// Generates an HTML page that renders a Graphviz DOT graph via QuickChart.
+///
+/// Produces a self-contained HTML document that fetches the rendered SVG
+/// from `quickchart.io`. Falls back to showing the raw DOT source when
+/// the image fails to load.
+///
+/// See also:
+/// - [G6HtmlGenerator] for interactive visualizations.
+/// - [GraphVisualizer] which selects the appropriate generator.
 class HtmlGenerator {
-  /// Returns an HTML string that displays [dotContent] as an SVG image.
+  /// Returns an HTML string that displays [dotContent] as an SVG image
+  /// rendered through the QuickChart Graphviz API.
   static String generate(String dotContent) {
     // Encode the DOT content for URL
     final encodedDot = Uri.encodeComponent(dotContent);

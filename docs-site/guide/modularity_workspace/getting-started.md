@@ -1,4 +1,4 @@
-# 🚀 Getting Started
+# Getting Started
 
 Add Modularity to a Flutter app, create a module, and access dependencies from the widget tree.
 
@@ -13,7 +13,7 @@ dependencies:
 `modularity_contracts` is pulled in automatically.
 
 ::: tip Dart Workspace
-In a monorepo, list packages under root `pubspec.yaml` with a `workspace:` key. Each member needs `resolution: workspace` in its own pubspec.
+In a monorepo, list packages under the root `pubspec.yaml` with a `workspace:` key. Each member needs `resolution: workspace` in its own pubspec.
 :::
 
 ## Create a Module
@@ -41,32 +41,28 @@ class AuthModule extends Module {
 }
 ```
 
-- `binds()` -- private to this module.
-- `exports()` -- visible to modules that import `AuthModule`.
+- `binds()` -- private to this module. Internal implementation details stay hidden.
+- `exports()` -- visible to modules that import `AuthModule`. Only public-facing interfaces belong here.
 
 ### Registration Methods
 
 | Method | Behaviour |
 |--------|-----------|
-| `registerLazySingleton<T>(() => ...)` | Created once on first `get<T>()` |
-| `registerFactory<T>(() => ...)` | New instance every `get<T>()` |
-| `registerSingleton<T>(instance)` | Eager -- same instance always |
+| `registerLazySingleton<T>(() => ...)` | Created once on first `get<T>()` call |
+| `registerFactory<T>(() => ...)` | New instance on every `get<T>()` call |
+| `registerSingleton<T>(instance)` | Eager -- same pre-created instance always |
 
 ## Wire the App
 
 Two widgets connect modules to Flutter:
 
-| Component | Role |
-|-----------|------|
+| Widget | Role |
+|--------|------|
 | `ModularityRoot` | Top-level `InheritedWidget`. Holds the global registry and `BinderFactory`. |
-| `ModuleScope<T>` | Manages one module's lifecycle. |
+| `ModuleScope<T>` | Manages one module's lifecycle and exposes its binder to descendants. |
 
-::: tip Modularity.observer
-`Modularity.observer` is a global `RouteObserver` required for `routeBound` retention policy. Pass it to `navigatorObservers`.
-:::
-
-::: warning Default Retention Policy
-The default retention policy is `routeBound`, which means `Modularity.observer` **must** be added to `navigatorObservers`. If you don't need route-bound retention, explicitly set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope` to skip the observer requirement.
+::: warning Modularity.observer is Required
+The default retention policy is `routeBound`, which disposes the module when its route is popped. This requires `Modularity.observer` in `navigatorObservers`. Without it, route-bound disposal will not work. If you don't need route-bound retention, set `retentionPolicy: ModuleRetentionPolicy.strict` on your `ModuleScope`.
 :::
 
 ```dart
@@ -96,9 +92,7 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-::: warning
 `ModularityRoot` must be above any `ModuleScope` in the widget tree.
-:::
 
 ## Access Dependencies
 
@@ -141,6 +135,8 @@ If nothing matches, `DependencyNotFoundException` is thrown with a list of avail
 
 ### Get the Module Instance
 
+Access the module object itself when you need to call methods on it:
+
 ```dart
 final auth = ModuleProvider.moduleOf<AuthModule>(context);
 ```
@@ -161,18 +157,16 @@ stateDiagram-v2
     disposed --> [*]
 ```
 
-::: details Full Lifecycle Hooks Reference
-
 | Hook | Timing |
 |------|--------|
-| `binds(Binder i)` | Sync, after imports resolved |
+| `binds(Binder i)` | Sync, after imports resolved and `expects` validated |
 | `exports(Binder i)` | Sync, right after `binds()` |
-| `onInit()` | Async, after binds/exports |
+| `onInit()` | Async, after binds/exports complete |
 | `onDispose()` | On controller disposal |
 
-:::
-
 ### Loading and Error UI
+
+`ModuleScope` supports per-scope builders for loading and error states:
 
 ```dart
 ModuleScope<PaymentModule>(
@@ -186,8 +180,12 @@ ModuleScope<PaymentModule>(
 )
 ```
 
-::: tip Best Practices
-- Fallback order: per-scope builder -> `ModularityRoot` defaults -> built-in placeholder.
-- The `retry` callback disposes the failed controller and re-runs the full initialization cycle.
-- Keep modules focused -- one feature domain per module.
-:::
+Fallback order: per-scope builder, then `ModularityRoot` defaults, then built-in placeholder. The `retry` callback disposes the failed controller and re-runs the full initialization cycle.
+
+## Next Steps
+
+- [Module Architecture](./module-architecture.md) -- visibility rules, imports, parent scope, `expects`, configurable modules
+- [Module Retention](./module-retention.md) -- `routeBound`, `keepAlive`, `strict` policies
+- [Dependency Overrides](./dependency-overrides.md) -- override bindings for testing, feature flags, and environment-specific DI
+- [Testing Modules](./testing-modules.md) -- unit tests, widget tests, mocking strategies
+- [Hot Reload](./hot-reload.md) -- how singleton state survives hot reload

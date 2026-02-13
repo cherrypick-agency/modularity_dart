@@ -6,17 +6,28 @@ import 'package:modularity_core/modularity_core.dart';
 import '../modularity.dart';
 import 'module_retainer.dart';
 
-/// Signature for a function that returns the current [ModuleController], or
-/// `null` if none is attached.
+/// Signature for a function that returns the current [ModuleController],
+/// or `null` if none is attached.
+///
+/// Used by [ModuleRetentionBinding] to query the controller held by the
+/// owning [ModuleScope] state.
 typedef ControllerGetter = ModuleController? Function();
 
 /// Signature for a function that releases (and optionally disposes) the
 /// current [ModuleController].
+///
+/// When [disposeController] is `true`, the controller is fully disposed.
+/// When `false`, the reference is detached but the controller remains alive
+/// (e.g. held by a [ModuleRetainer]).
 typedef ControllerRelease =
     Future<void> Function({required bool disposeController});
 
 /// Binding object that connects a [ModuleRetentionStrategy] to the widget
 /// tree, the [ModuleRetainer] cache, and the active [ModuleController].
+///
+/// Created by [ModuleScope] and passed to the strategy during initialization.
+/// Provides everything the strategy needs to manage controller lifecycle
+/// without direct access to the widget state.
 class ModuleRetentionBinding {
   /// Create a retention binding with all required dependencies.
   ModuleRetentionBinding({
@@ -58,7 +69,13 @@ class ModuleRetentionBinding {
 /// Base class for module retention strategies that govern when a
 /// [ModuleController] is reused, created, and disposed.
 ///
-/// Each concrete subclass corresponds to one [ModuleRetentionPolicy] value.
+/// Each concrete subclass corresponds to one [ModuleRetentionPolicy] value:
+/// - [StrictRetentionStrategy] -- always dispose on unmount.
+/// - [RouteBoundRetentionStrategy] -- dispose when the enclosing route pops.
+/// - [KeepAliveRetentionStrategy] -- cache in [ModuleRetainer], survive unmount.
+///
+/// See also:
+/// - [buildStrategy] which creates the appropriate strategy for a given policy.
 abstract class ModuleRetentionStrategy {
   /// Create a strategy bound to the given [binding].
   ModuleRetentionStrategy(this.binding);
@@ -284,6 +301,9 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
 
 /// Create the appropriate [ModuleRetentionStrategy] for the given [policy]
 /// and [binding].
+///
+/// Returns a [StrictRetentionStrategy], [RouteBoundRetentionStrategy], or
+/// [KeepAliveRetentionStrategy] depending on the policy value.
 ModuleRetentionStrategy buildStrategy(
   ModuleRetentionPolicy policy,
   ModuleRetentionBinding binding,

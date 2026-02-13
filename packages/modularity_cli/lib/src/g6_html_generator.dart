@@ -2,8 +2,16 @@ import 'dart:convert';
 import 'graph_data.dart';
 
 /// Generates an interactive HTML page using AntV G6 for graph visualization.
+///
+/// Produces a self-contained HTML document with drag, zoom, and tooltip
+/// support. Nodes display module names; hovering shows dependency details.
+///
+/// See also:
+/// - [HtmlGenerator] for static Graphviz rendering.
+/// - [GraphVisualizer] which selects the appropriate generator.
 class G6HtmlGenerator {
-  /// Returns a self-contained HTML string visualizing [graphData] with G6.
+  /// Returns a self-contained HTML string visualizing [graphData] with an
+  /// interactive AntV G6 diagram.
   static String generate(ModuleGraphData graphData) {
     final jsonData = jsonEncode(graphData.toJson());
 
