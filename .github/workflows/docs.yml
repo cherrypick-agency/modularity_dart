@@ -36,8 +36,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: docs-site/package-lock.json
 
       - name: Install dartdoc-vitepress
         run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git --git-ref 13886d48
@@ -52,7 +50,7 @@ jobs:
             --output docs-site
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
         working-directory: docs-site
 
       - name: Build VitePress site
