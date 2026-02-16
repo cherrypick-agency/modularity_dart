@@ -101,5 +101,4 @@ docs-site/.vitepress/generated/
 docs-site/.vitepress/dist/
 docs-site/.vitepress/cache/
 docs-site/node_modules/
-docs-site/guide/*.md
-!docs-site/guide/index.md
+docs-site/guide/_generated/
