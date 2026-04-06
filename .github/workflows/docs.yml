@@ -17,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -25,42 +26,43 @@ jobs:
           channel: stable
           cache: true
 
-      # Cache Dart pub dependencies for faster builds
-      - name: Cache Dart pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
-          restore-keys: pub-cache-
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+      - name: Setup Dart pub global path
+        run: echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Install dartdoc_modern
         run: dart pub global activate --source git https://github.com/777genius/dartdoc_modern.git
 
-      # Generate API docs and sidebar files from Dart source code
-      - name: Generate API docs
-        run: |
-          dart pub global run dartdoc_modern \
-            --format vitepress \
-            --workspace-docs \
-            --exclude-packages 'complex_app,complex_mobx,example,example_auto_route,example_bloc,example_go_router,example_riverpod,modularity_injectable_example,test_utils' \
-            --output docs-site
+      - name: Generate docs
+        run: >
+          dart pub global run dartdoc_modern
+          --format jaspr
+          --workspace-docs
+          --exclude-packages 'complex_app,complex_mobx,example,example_auto_route,example_bloc,example_go_router,example_riverpod,modularity_injectable_example,test_utils'
+          --output docs-site
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: docs-site
+      # dartdoc_modern generates web/guide/<name>.html with <meta http-equiv="refresh">.
+      # On GitHub Pages these .html files take priority over Jaspr SSR
+      # guide/<name>/index.html, causing an infinite redirect loop.
+      # DO NOT REMOVE this step - the redirect loop WILL come back.
+      - name: Remove legacy guide redirect files
+        run: find docs-site/web/guide -name '*.html' -delete 2>/dev/null || true
 
-      - name: Build VitePress site
-        run: npx vitepress build
+      - name: Install docs dependencies
         working-directory: docs-site
+        run: dart pub get
+
+      - name: Build docs (jaspr)
+        working-directory: docs-site
+        run: dart run jaspr_cli:jaspr build
+        timeout-minutes: 10
+
+      - name: Assemble site
+        run: cp -r docs-site/build/jaspr _site
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs-site/.vitepress/dist
+          path: _site
 
   deploy:
     needs: build
