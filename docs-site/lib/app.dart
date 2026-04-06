@@ -3,6 +3,7 @@ import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/components/callout.dart';
 import 'package:jaspr_content/components/image.dart';
 import 'package:jaspr_content/components/tabs.dart';
+import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/src/content_app.dart';
 import 'package:jaspr_content/src/page_extension/heading_anchors_extension.dart';
 import 'package:jaspr_content/src/page_extension/table_of_contents_extension.dart';
