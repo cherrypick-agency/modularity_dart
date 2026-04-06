@@ -37,13 +37,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dartdoc-vitepress
-        run: dart pub global activate --source git https://github.com/777genius/dartdoc_vitepress.git --git-ref 13886d48
+      - name: Install dartdoc_modern
+        run: dart pub global activate --source git https://github.com/777genius/dartdoc_modern.git
 
       # Generate API docs and sidebar files from Dart source code
       - name: Generate API docs
         run: |
-          dart pub global run dartdoc_vitepress \
+          dart pub global run dartdoc_modern \
             --format vitepress \
             --workspace-docs \
             --exclude-packages 'complex_app,complex_mobx,example,example_auto_route,example_bloc,example_go_router,example_riverpod,modularity_injectable_example,test_utils' \
