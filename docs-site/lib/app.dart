@@ -220,8 +220,6 @@ class _RouteAwareSidebar extends StatelessComponent {
   Component build(BuildContext context) {
     final url = context.page.url;
     final isApi = url.startsWith('/api');
-    return DocsSidebar(
-      groups: isApi ? apiGroups : guideGroups,
-    );
+    return DocsSidebar(groups: isApi ? apiGroups : guideGroups);
   }
 }
