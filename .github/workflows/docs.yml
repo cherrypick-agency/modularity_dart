@@ -53,7 +53,7 @@ jobs:
 
       - name: Build docs (jaspr)
         working-directory: docs-site
-        run: dart run jaspr_cli:jaspr build
+        run: dart run jaspr_cli:jaspr build --dart-define DOCS_BASE_PATH=/modularity_dart
         timeout-minutes: 10
 
       - name: Assemble site
