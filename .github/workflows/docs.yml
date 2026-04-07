@@ -47,6 +47,11 @@ jobs:
       - name: Remove legacy guide redirect files
         run: find docs-site/web/guide -name '*.html' -delete 2>/dev/null || true
 
+      - name: Override package name in header
+        run: |
+          sed -i "s/packageName: 'modularity_workspace'/packageName: 'Modularity'/" \
+            docs-site/lib/main.server.dart
+
       - name: Install docs dependencies
         working-directory: docs-site
         run: dart pub get
