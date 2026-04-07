@@ -518,8 +518,8 @@ class DocsHomeHero extends StatelessComponent {
       css('.mod-child .mod-label').styles(fontSize: 0.48.rem),
       css('.mod-child-disposing').styles(
         raw: {
-          'left': '62%',
-          'bottom': '6%',
+          'left': 'calc(50% + 3.4rem)',
+          'bottom': '-0.4rem',
           'animation': 'mod-child-dispose 10s ease-in-out infinite',
         },
       ),
