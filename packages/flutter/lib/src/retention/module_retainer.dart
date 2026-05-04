@@ -67,6 +67,10 @@ class _ModuleRetainerEntry {
     await controller.dispose();
   }
 
+  void detach() {
+    _unsubscribeRoute();
+  }
+
   void attachRoute({
     ModalRoute<dynamic>? route,
     FutureOr<void> Function()? onRouteTerminated,
@@ -83,7 +87,23 @@ class _ModuleRetainerEntry {
     final currentToken = ++_routeToken;
     route.popped.whenComplete(() {
       if (_routeToken == currentToken) {
-        unawaited(_notifyRouteTermination());
+        unawaited(
+          _notifyRouteTermination().catchError((
+            Object error,
+            StackTrace stackTrace,
+          ) {
+            FlutterError.reportError(
+              FlutterErrorDetails(
+                exception: error,
+                stack: stackTrace,
+                library: 'modularity_flutter',
+                context: ErrorDescription(
+                  'while handling retained module route termination',
+                ),
+              ),
+            );
+          }),
+        );
       }
     });
   }
@@ -115,7 +135,7 @@ class _ModuleRetainerEntry {
 /// independent of [ModuleOverrideScope]. This is by design:
 ///
 /// - **retentionKey** determines cache identity (derived from module type,
-///   route, arguments, and explicit key).
+///   `Module.identityKey`, route, arguments, and explicit key).
 /// - **overrideScope** affects DI bindings within the module's dependency graph
 ///   but does NOT affect retention cache identity.
 ///
@@ -178,6 +198,17 @@ class ModuleRetainer {
   ModuleController? acquire(Object key) {
     final entry = _entries[key];
     if (entry == null) return null;
+    if (entry.controller.currentStatus == ModuleStatus.disposed) {
+      _entries.remove(key);
+      entry.detach();
+      _log(
+        ModuleLifecycleEvent.evicted,
+        entry.moduleType,
+        retentionKey: key,
+        details: {'reason': 'staleDisposedController'},
+      );
+      return null;
+    }
     entry.refCount++;
     entry.lastAccessed = DateTime.now();
     _log(
@@ -202,6 +233,19 @@ class ModuleRetainer {
     ModalRoute<dynamic>? route,
     FutureOr<void> Function()? onRouteTerminated,
   }) {
+    if (initialRefCount < 0) {
+      throw ModuleLifecycleException(
+        'initialRefCount must be greater than or equal to zero.',
+        moduleType: controller.module.runtimeType,
+      );
+    }
+    if (controller.currentStatus == ModuleStatus.disposed) {
+      throw ModuleLifecycleException(
+        'Disposed controllers cannot be registered in ModuleRetainer.',
+        moduleType: controller.module.runtimeType,
+        state: ModuleStatus.disposed,
+      );
+    }
     if (_entries.containsKey(key)) {
       throw ModuleLifecycleException(
         'Retention key "$key" is already registered. '
@@ -269,6 +313,7 @@ class ModuleRetainer {
   Future<void> evict(Object key, {bool disposeController = true}) async {
     final entry = _entries.remove(key);
     if (entry == null) return;
+    entry.detach();
     _log(
       ModuleLifecycleEvent.evicted,
       entry.moduleType,

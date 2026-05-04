@@ -26,6 +26,39 @@ class LeafModule extends Module {
   }
 }
 
+/// Same module type can be imported with different runtime constructor state.
+class KeyedLeafModule extends Module {
+  KeyedLeafModule(this.id);
+
+  final String id;
+
+  @override
+  Object get identityKey => id;
+
+  @override
+  void binds(Binder i) {
+    i.registerSingleton<String>(id);
+  }
+
+  @override
+  void exports(Binder i) {
+    i.registerSingleton<String>(id);
+  }
+}
+
+class KeyedImportsRoot extends Module {
+  KeyedImportsRoot(this.first, this.second);
+
+  final KeyedLeafModule first;
+  final KeyedLeafModule second;
+
+  @override
+  List<Module> get imports => [first, second];
+
+  @override
+  void binds(Binder i) {}
+}
+
 /// Module that imports a single LeafModule.
 class SingleImportModule extends Module {
   SingleImportModule(this.log);
@@ -268,6 +301,54 @@ void main() {
 
         expect(controllers.first.module, isA<LeafModule>());
       });
+
+      test(
+        'identityKey separates same-type imports with different state',
+        () async {
+          final root = KeyedImportsRoot(
+            KeyedLeafModule('first'),
+            KeyedLeafModule('second'),
+          );
+
+          final controllers = await resolver.resolveAndInitImports(
+            root,
+            registry,
+            binderFactory,
+          );
+
+          expect(controllers, hasLength(2));
+          expect(controllers.first, isNot(same(controllers.last)));
+          expect(controllers.first.binder.get<String>(), equals('first'));
+          expect(controllers.last.binder.get<String>(), equals('second'));
+          expect(
+            registry.keys.where((key) => key.moduleType == KeyedLeafModule),
+            hasLength(2),
+          );
+        },
+      );
+
+      test(
+        'identityKey still reuses same-type imports with same identity',
+        () async {
+          final root = KeyedImportsRoot(
+            KeyedLeafModule('shared'),
+            KeyedLeafModule('shared'),
+          );
+
+          final controllers = await resolver.resolveAndInitImports(
+            root,
+            registry,
+            binderFactory,
+          );
+
+          expect(controllers, hasLength(2));
+          expect(controllers.first, same(controllers.last));
+          expect(
+            registry.keys.where((key) => key.moduleType == KeyedLeafModule),
+            hasLength(1),
+          );
+        },
+      );
     });
 
     group('error propagation', () {

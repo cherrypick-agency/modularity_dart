@@ -82,9 +82,10 @@ class ProfileModule extends Module {
 
 1. `GraphResolver.resolveAndInitImports()` processes `module.imports`.
 2. Each import initializes **concurrently** via `Future.wait`.
-3. Same module type imported by multiple branches is **deduplicated** -- first creator wins, others await.
-4. **Circular dependencies** (`A -> B -> A`) throw `CircularDependencyException` with the full chain.
-5. Resolved binders are injected via `binder.addImports()`.
+3. Same module type imported by multiple branches is **deduplicated** by type, optional `Module.identityKey`, and override scope.
+4. If multiple imports use the same module class with different constructor state, override `identityKey` with an immutable stable value.
+5. **Circular dependencies** (`A -> B -> A`) throw `CircularDependencyException` with the full chain. Detection uses module type plus `Module.identityKey`, so same-type modules with different stable identities can appear in one graph.
+6. Resolved binders are injected via `binder.addImports()`.
 
 ### Diamond Dependencies
 

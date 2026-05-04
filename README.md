@@ -212,6 +212,28 @@ ModuleScope(
 )
 ```
 
+### Import Identity for Stateful Imports
+
+Imported modules are cached by module type, optional `identityKey`, and override scope. If two imports use the same module class with different constructor state, override `identityKey` so they do not accidentally share one controller:
+
+```dart
+class TenantApiModule extends Module {
+  TenantApiModule(this.tenantId);
+
+  final String tenantId;
+
+  @override
+  Object get identityKey => tenantId;
+
+  @override
+  void binds(Binder i) {
+    i.registerLazySingleton<ApiClient>(() => ApiClient(tenantId));
+  }
+}
+```
+
+For route or widget arguments, prefer `Configurable<T>` and pass values through `ModuleScope.args`. Use `identityKey` only for imported modules that truly carry constructor state.
+
 ### Expected Dependencies (expects)
 
 Declare required dependencies from parent scope for fail-fast initialization:
@@ -353,7 +375,9 @@ During hot reload:
 
 ### Custom Retention Identity
 
-For advanced caching scenarios, implement `RetentionIdentityProvider`:
+For simple constructor identity, override `Module.identityKey`; the default
+retention key includes it automatically. For advanced caching scenarios that
+need route/context data, implement `RetentionIdentityProvider`:
 
 ```dart
 class UserProfileModule extends Module with RetentionIdentityProvider {

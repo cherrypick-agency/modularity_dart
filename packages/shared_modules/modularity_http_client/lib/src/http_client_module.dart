@@ -72,10 +72,10 @@ class HttpClientModule extends Module
   @override
   void exports(Binder i) {
     // Export registry for named client access
-    i.registerSingleton<HttpClientRegistry>(_registry);
-
-    // Export default client for simple access via binder.get<HttpClient>()
-    i.registerLazySingleton<HttpClient>(() => _registry.defaultClient);
+    i
+      ..registerSingleton<HttpClientRegistry>(_registry)
+      // Export default client for simple access via binder.get<HttpClient>()
+      ..registerLazySingleton<HttpClient>(() => _registry.defaultClient);
   }
 
   @override
@@ -93,9 +93,5 @@ class HttpClientModule extends Module
   }
 
   @override
-  void onDispose() {
-    // Module.onDispose is synchronous, but client disposal is async.
-    // Use unawaited to avoid blocking.
-    unawaited(_registry.disposeAll());
-  }
+  Future<void> onDispose() => _registry.disposeAll();
 }

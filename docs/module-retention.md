@@ -117,6 +117,7 @@ When `retentionKey` is not provided, the framework computes one from:
 | Input | Source |
 |-------|--------|
 | Module type | `module.runtimeType` |
+| Module identity | `module.identityKey` |
 | Route name | `ModalRoute.of(context).settings.name` |
 | Arguments hash | Stable hash of `args` passed to `ModuleScope` |
 | Parent key | Inherited from the nearest ancestor `ModuleScope` via `_RetentionKeyScope` |
@@ -223,12 +224,10 @@ ModularityRoot(
 
 ## Runtime Constraints
 
-::: warning Immutability Assertions
-- **retentionPolicy cannot change** at runtime. An assertion fires in debug mode if you rebuild a `ModuleScope` with a different policy. Create a new widget instance instead.
-- **retentionKey cannot change** at runtime. Same assertion behavior.
-:::
-
-- **Nested key scoping** is automatic. Child modules receive the parent's key through `_RetentionKeyScope`, so derived keys include the parent namespace.
+- **Lifecycle-critical `ModuleScope` configuration changes restart the controller.**
+  This includes `args`, `retentionPolicy`, derived `retentionKey`, `overrides`,
+  and `overrideScope`.
+- **Nested key scoping** is automatic. Child modules receive the parent's key through `_RetentionKeyScope`, so derived keys include the parent namespace. If the inherited parent key changes, the child scope restarts with a fresh derived key.
 
 ## FAQ
 

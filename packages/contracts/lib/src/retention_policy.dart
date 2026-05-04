@@ -23,11 +23,13 @@ enum ModuleRetentionPolicy {
 /// module instance.
 ///
 /// Passed to [RetentionIdentityProvider.buildRetentionIdentity] so that the
-/// module can produce a stable key based on its type, route, and arguments.
+/// module can produce a stable key based on its type, module identity, route,
+/// and arguments.
 class ModuleRetentionContext {
   /// Creates a retention context for the given [moduleType].
   ModuleRetentionContext({
     required this.moduleType,
+    this.moduleIdentityKey,
     this.routeName,
     this.routePath,
     this.argumentsHash,
@@ -37,6 +39,9 @@ class ModuleRetentionContext {
 
   /// Runtime type of the module instance.
   final Type moduleType;
+
+  /// Optional identity from [Module.identityKey].
+  final Object? moduleIdentityKey;
 
   /// Optional router-provided name (e.g. `RouteSettings.name`).
   final String? routeName;

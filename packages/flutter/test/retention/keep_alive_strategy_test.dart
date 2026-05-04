@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
@@ -18,6 +20,15 @@ class LifecycleModule extends Module {
   void onDispose() {
     disposeCount++;
   }
+}
+
+class KeyedLifecycleModule extends LifecycleModule {
+  KeyedLifecycleModule(this.id);
+
+  final String id;
+
+  @override
+  Object get identityKey => id;
 }
 
 final _observer = RouteObserver<ModalRoute<dynamic>>();
@@ -110,8 +121,10 @@ void main() {
       expect(module.initCount, 1);
       expect(retainer.debugSnapshot(), isNotEmpty);
 
-      navigatorKey.currentState!.pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+      unawaited(
+        navigatorKey.currentState!.pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -140,6 +153,88 @@ void main() {
       });
 
       expect(module.disposeCount, 1);
+    });
+
+    test('does not acquire stale disposed controller', () async {
+      final module = LifecycleModule();
+      final controller = ModuleController(module);
+      final retainer = ModuleRetainer();
+
+      await controller.initialize({});
+      retainer.register(key: 'stale', controller: controller);
+      await controller.dispose();
+
+      expect(retainer.acquire('stale'), isNull);
+      expect(retainer.debugSnapshot(), isEmpty);
+    });
+
+    testWidgets('evict without dispose detaches route listener', (
+      tester,
+    ) async {
+      final module = LifecycleModule();
+      final controller = ModuleController(module);
+      final retainer = ModuleRetainer();
+      final navigatorKey = GlobalKey<NavigatorState>();
+      late ModalRoute<dynamic> route;
+      var routeTerminations = 0;
+
+      await controller.initialize({});
+
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigatorKey,
+          home: Builder(
+            builder: (context) {
+              route = ModalRoute.of(context)!;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      retainer.register(
+        key: 'route-detach',
+        controller: controller,
+        route: route,
+        onRouteTerminated: () {
+          routeTerminations++;
+        },
+      );
+
+      await retainer.evict('route-detach', disposeController: false);
+      unawaited(
+        navigatorKey.currentState!.pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(routeTerminations, 0);
+      await controller.dispose();
+    });
+
+    test('rejects invalid retained controller entries', () async {
+      final module = LifecycleModule();
+      final controller = ModuleController(module);
+      final retainer = ModuleRetainer();
+
+      await controller.initialize({});
+      await controller.dispose();
+
+      expect(
+        () => retainer.register(key: 'disposed', controller: controller),
+        throwsA(isA<ModuleLifecycleException>()),
+      );
+
+      expect(
+        () => retainer.register(
+          key: 'negative-ref',
+          controller: ModuleController(LifecycleModule()),
+          initialRefCount: -1,
+        ),
+        throwsA(isA<ModuleLifecycleException>()),
+      );
     });
   });
 
@@ -181,6 +276,43 @@ void main() {
       expect(moduleA.initCount, 1);
       expect(moduleB.initCount, 1);
       expect(retainer.debugSnapshot().length, 2);
+    });
+
+    testWidgets('module identityKey separates default keepAlive keys', (
+      tester,
+    ) async {
+      final moduleA = KeyedLifecycleModule('tenant-a');
+      final moduleB = KeyedLifecycleModule('tenant-b');
+      final retainer = ModuleRetainer();
+
+      await tester.pumpWidget(
+        ModularityRoot(
+          observer: _observer,
+          retainer: retainer,
+          child: MaterialApp(
+            navigatorObservers: [_observer],
+            home: Column(
+              children: [
+                ModuleScope(
+                  module: moduleA,
+                  retentionPolicy: ModuleRetentionPolicy.keepAlive,
+                  child: const SizedBox.shrink(),
+                ),
+                ModuleScope(
+                  module: moduleB,
+                  retentionPolicy: ModuleRetentionPolicy.keepAlive,
+                  child: const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(moduleA.initCount, 1);
+      expect(moduleB.initCount, 1);
+      expect(retainer.debugSnapshot(), hasLength(2));
     });
 
     testWidgets('evicting one retention key variant does not affect another', (

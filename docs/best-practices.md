@@ -337,8 +337,9 @@ class PaymentModule extends Module {
 6. **Add `onInit()`** only if async initialization is needed.
 7. **Add `onDispose()`** only if non-DI cleanup is needed (timers, sockets).
 8. **Implement `Configurable<T>`** if the module needs runtime parameters.
-9. **Wrap in `ModuleScope`** at the route or widget level.
-10. **Test in isolation** using `ModuleController` with a `SimpleBinder`.
+9. **Override `identityKey`** only for imported modules with constructor state that must not share a controller.
+10. **Wrap in `ModuleScope`** at the route or widget level.
+11. **Test in isolation** using `ModuleController` with a `SimpleBinder`.
 
 ```dart
 class FeatureModule extends Module implements Configurable<String> {

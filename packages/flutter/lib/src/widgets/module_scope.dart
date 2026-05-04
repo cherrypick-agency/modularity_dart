@@ -103,7 +103,8 @@ class ModuleScope<T extends Module> extends StatefulWidget {
 
   /// Explicit key for KeepAlive cache identity.
   ///
-  /// If null, derived from module type, route, and arguments.
+  /// If null, derived from module type, `Module.identityKey`, route, and
+  /// arguments.
   /// Does NOT include [overrideScope] by default.
   final Object? retentionKey;
 
@@ -131,6 +132,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   Object? _retentionKey;
   ModuleRetentionStrategy? _strategy;
   bool _retentionInitialized = false;
+  int _restartGeneration = 0;
 
   @override
   void initState() {
@@ -141,26 +143,28 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
   @override
   void didUpdateWidget(covariant ModuleScope<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    assert(
-      oldWidget.retentionPolicy == widget.retentionPolicy,
-      'Changing retentionPolicy at runtime is not supported. '
-      'Rebuild ModuleScope with a new instance instead.',
-    );
-    assert(
-      oldWidget.retentionKey == widget.retentionKey,
-      'Changing retentionKey at runtime is not supported.',
-    );
+    final restartReason = _restartReasonForWidgetUpdate(oldWidget);
+    if (restartReason != null) {
+      _restartForConfigurationChange(restartReason);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_retentionInitialized) {
+      final nextKey = _deriveRetentionKey();
+      if (_retentionKey != nextKey) {
+        _restartForConfigurationChange('retention context changed');
+        return;
+      }
+    }
     _ensureStrategyInitialized();
     _strategy?.didChangeDependencies();
     _ensureController();
   }
 
-  void _createAndInitController() {
+  ModuleController _createAndInitController() {
     final factory = ModularityRoot.binderFactoryOf(context);
 
     // Scope Chaining: Find Parent Binder
@@ -180,9 +184,15 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       interceptors: ModularityRoot.interceptorsOf(context),
     );
 
+    var runInitialize = true;
+
     // Configure the module (args are passed to configure(T args))
     if (widget.args != null) {
-      controller.configure(widget.args);
+      try {
+        controller.configure(widget.args);
+      } catch (_) {
+        runInitialize = false;
+      }
     }
 
     ModularityRoot.log(
@@ -197,7 +207,8 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       },
     );
 
-    _attachController(controller, runInitialize: true);
+    _attachController(controller, runInitialize: runInitialize);
+    return controller;
   }
 
   void _attachController(
@@ -242,15 +253,7 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       return;
     }
 
-    final parentKey = _RetentionKeyScope.maybeOf(context);
-    final derivedKey = deriveRetentionKey(
-      module: widget.module,
-      context: context,
-      explicitKey: widget.retentionKey,
-      parentKey: parentKey,
-      args: widget.args,
-      extras: widget.retentionExtras,
-    );
+    final derivedKey = _deriveRetentionKey();
     _retentionKey = derivedKey;
 
     final binding = ModuleRetentionBinding(
@@ -269,6 +272,94 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
     _retentionInitialized = true;
   }
 
+  Object _deriveRetentionKey() {
+    final parentKey = _RetentionKeyScope.maybeOf(context);
+    return deriveRetentionKey(
+      module: widget.module,
+      context: context,
+      explicitKey: widget.retentionKey,
+      parentKey: parentKey,
+      args: widget.args,
+      extras: widget.retentionExtras,
+    );
+  }
+
+  String? _restartReasonForWidgetUpdate(ModuleScope<T> oldWidget) {
+    if (oldWidget.retentionPolicy != widget.retentionPolicy) {
+      return 'retentionPolicy changed';
+    }
+    if (oldWidget.module.runtimeType != widget.module.runtimeType) {
+      return 'module runtimeType changed';
+    }
+    if (oldWidget.module.identityKey != widget.module.identityKey) {
+      return 'module identityKey changed';
+    }
+    if (oldWidget.args != widget.args) {
+      return 'args changed';
+    }
+    if (!identical(oldWidget.overrides, widget.overrides)) {
+      return 'overrides changed';
+    }
+    if (!identical(oldWidget.overrideScope, widget.overrideScope)) {
+      return 'overrideScope changed';
+    }
+
+    if (_retentionInitialized) {
+      final nextKey = _deriveRetentionKey();
+      if (_retentionKey != nextKey) {
+        return 'retentionKey changed';
+      }
+    }
+
+    return null;
+  }
+
+  void _restartForConfigurationChange(String reason) {
+    final generation = ++_restartGeneration;
+    final strategy = _strategy;
+    _strategy = null;
+    _retentionInitialized = false;
+    _retentionKey = null;
+    _error = null;
+    _status = ModuleStatus.initial;
+
+    unawaited(
+      _disposeForRestart(strategy)
+          .then((_) {
+            if (!mounted || generation != _restartGeneration) {
+              return;
+            }
+            _policy = widget.retentionPolicy;
+            _ensureStrategyInitialized();
+            _strategy?.didChangeDependencies();
+            _ensureController();
+            if (mounted) {
+              setState(() {});
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            FlutterError.reportError(
+              FlutterErrorDetails(
+                exception: error,
+                stack: stackTrace,
+                library: 'modularity_flutter',
+                context: ErrorDescription(
+                  'while restarting ModuleScope after $reason',
+                ),
+              ),
+            );
+          }),
+    );
+  }
+
+  Future<void> _disposeForRestart(ModuleRetentionStrategy? strategy) async {
+    if (strategy != null) {
+      await strategy.disposeNow();
+    } else {
+      await _releaseController(disposeController: true);
+    }
+  }
+
   void _ensureController() {
     if (_controller != null) return;
 
@@ -278,9 +369,13 @@ class _ModuleScopeState<T extends Module> extends State<ModuleScope<T>> {
       return;
     }
 
-    _createAndInitController();
-    final controller = _controller;
-    if (controller != null) {
+    if (!(_strategy?.canCreateController ?? true)) {
+      return;
+    }
+
+    final controller = _createAndInitController();
+    if (controller.currentStatus != ModuleStatus.error &&
+        controller.currentStatus != ModuleStatus.disposed) {
       _strategy?.onControllerCreated(controller);
     }
   }

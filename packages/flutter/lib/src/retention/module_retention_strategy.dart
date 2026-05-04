@@ -86,6 +86,10 @@ abstract class ModuleRetentionStrategy {
   /// signal that a new controller must be created.
   ModuleController? reuseExisting();
 
+  /// Whether [ModuleScope] may create a new controller when no cached
+  /// controller can be reused.
+  bool get canCreateController => true;
+
   /// Handle post-creation bookkeeping for a newly created [controller].
   void onControllerCreated(ModuleController controller);
 
@@ -164,6 +168,9 @@ class KeepAliveRetentionStrategy extends ModuleRetentionStrategy {
   }
 
   @override
+  bool get canCreateController => !_routeTerminationHandled;
+
+  @override
   void onControllerCreated(ModuleController controller) {
     if (_routeTerminationHandled) {
       return;
@@ -195,7 +202,8 @@ class KeepAliveRetentionStrategy extends ModuleRetentionStrategy {
   }
 
   @override
-  Future<void> disposeNow() async => _evictRetainedController();
+  Future<void> disposeNow() async =>
+      _evictRetainedController(disposeController: true);
 
   @override
   Future<void> onStateDispose() async {
@@ -209,25 +217,30 @@ class KeepAliveRetentionStrategy extends ModuleRetentionStrategy {
     await binding.retainer.release(binding.retentionKey);
   }
 
-  Future<void> _evictRetainedController() async {
+  Future<void> _evictRetainedController({
+    required bool disposeController,
+  }) async {
     if (!_registered) {
       await binding.releaseController(disposeController: true);
       return;
     }
-    await binding.releaseController(disposeController: false);
+    final controllerIsAttached = binding.controllerGetter() != null;
+    await binding.releaseController(
+      disposeController: disposeController && controllerIsAttached,
+    );
     await binding.retainer.evict(
       binding.retentionKey,
-      disposeController: false,
+      disposeController: disposeController && !controllerIsAttached,
     );
     _registered = false;
     _released = true;
     _routeTerminationHandled = true;
   }
 
-  void _handleRouteTermination() {
+  Future<void> _handleRouteTermination() async {
     if (_routeTerminationHandled) return;
     _routeTerminationHandled = true;
-    unawaited(_evictRetainedController());
+    await _evictRetainedController(disposeController: true);
   }
 }
 
@@ -275,6 +288,8 @@ class RouteBoundRetentionStrategy extends ModuleRetentionStrategy
   Future<void> disposeNow() async {
     if (_disposedByRoute) return;
     _disposedByRoute = true;
+    binding.observer.unsubscribe(this);
+    _route = null;
     await binding.releaseController(disposeController: true);
   }
 

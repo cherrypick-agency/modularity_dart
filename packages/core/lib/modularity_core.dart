@@ -21,5 +21,6 @@ export 'src/di/simple_binder.dart';
 export 'src/di/simple_binder_factory.dart';
 export 'src/engine/module_controller.dart';
 export 'src/engine/module_override_scope.dart';
+export 'src/graph/module_graph_node_key.dart';
 export 'src/graph/module_registry_key.dart';
 export 'src/logger/console_logger.dart';

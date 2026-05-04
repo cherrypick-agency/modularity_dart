@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:modularity_core/modularity_core.dart';
 
@@ -287,17 +289,40 @@ class _ModularityRootState extends State<ModularityRoot> {
   @override
   void dispose() {
     _retainer.logger = null;
+    final controllers = _registry.values.toSet().toList(growable: false);
     assert(() {
-      if (_registry.isNotEmpty) {
+      if (controllers.isNotEmpty) {
         debugPrint(
-          '[ModularityRoot] ${_registry.length} controllers still in '
+          '[ModularityRoot] ${controllers.length} controllers still in '
           'registry at root disposal.',
         );
       }
       return true;
     }());
     _registry.clear();
+    if (controllers.isNotEmpty) {
+      unawaited(_disposeRegistryControllers(controllers));
+    }
     super.dispose();
+  }
+
+  Future<void> _disposeRegistryControllers(
+    List<ModuleController> controllers,
+  ) async {
+    try {
+      await Future.wait<void>(
+        controllers.map((controller) => controller.dispose()),
+      );
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'modularity_flutter',
+          context: ErrorDescription('while disposing ModularityRoot registry'),
+        ),
+      );
+    }
   }
 
   @override

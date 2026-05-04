@@ -1,3 +1,12 @@
+## 0.2.1
+
+- Added `Module.identityKey` for imports where multiple instances of the same
+  module class must coexist with different runtime constructor state.
+- `ModuleRetentionContext` now exposes `moduleIdentityKey` so Flutter retention
+  can include `Module.identityKey` in default cache identity.
+- `Module.onDispose` can now return `FutureOr<void>` so modules can await
+  async cleanup for databases, sockets, clients, and subscriptions.
+
 ## 0.2.0
 
 - Added typed exception hierarchy: `ModularityException`, `DependencyNotFoundException`,

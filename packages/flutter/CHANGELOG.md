@@ -1,3 +1,28 @@
+## 0.3.1
+
+- Default keep-alive retention keys now include `Module.identityKey`, preventing
+  accidental controller reuse between same-type modules with different
+  constructor identity.
+- Keep-alive route termination now disposes the evicted retained controller
+  instead of only removing it from the retainer cache.
+- `ModuleScope` now restarts its controller when lifecycle-critical widget
+  configuration changes, including args, retention key, retention policy, and
+  override scope changes.
+- Keep-alive scopes no longer recreate a controller during the route
+  termination frame after the retained controller has already been evicted.
+- Route-bound scopes now unsubscribe their route observer when disposed through
+  an explicit restart.
+- `ModuleRetainer` now detaches route listeners when entries are evicted
+  without disposing the underlying controller.
+- `ModularityRoot` now disposes controllers that remain in the global registry
+  when the root widget is disposed.
+- `ModuleRetainer` now rejects disposed controllers, drops stale disposed
+  entries on acquire, and validates negative reference counts.
+- Keep-alive route termination now awaits eviction and reports route cleanup
+  errors through `FlutterError`.
+- `ModuleScope` now renders configuration failures through the normal error
+  state instead of throwing during dependency changes.
+
 ## 0.3.0
 
 ### Breaking Changes

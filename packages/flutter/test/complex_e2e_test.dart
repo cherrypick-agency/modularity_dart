@@ -109,8 +109,20 @@ class FlakyModule extends Module {
       throw Exception('Init Failed');
     }
     // Add delay to ensure Loading state is visible in tests
-    await Future.delayed(const Duration(milliseconds: 50));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
   }
+}
+
+class ConfigurableStringModule extends Module implements Configurable<String> {
+  String? value;
+
+  @override
+  void configure(String args) {
+    value = args;
+  }
+
+  @override
+  void binds(Binder i) {}
 }
 
 // -----------------------------------------------------------------------------
@@ -242,6 +254,28 @@ void main() {
 
       expect(find.text('Success'), findsOneWidget);
       expect(FlakyModule.attempts, 2);
+    });
+
+    testWidgets('Config error is rendered by ModuleScope error UI', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ModularityRoot(
+          child: MaterialApp(
+            home: ModuleScope(
+              module: ConfigurableStringModule(),
+              args: 42,
+              child: const Text('Success'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Module Init Failed'), findsOneWidget);
+      expect(find.text('Success'), findsNothing);
+      expect(find.textContaining('failed to configure'), findsOneWidget);
     });
   });
 }

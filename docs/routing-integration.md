@@ -457,7 +457,7 @@ GoRoute(
 )
 ```
 
-Without an explicit key, the identity is derived from `(moduleType, route, args)`. Set `retentionKey` when you need deterministic cache identity independent of route metadata.
+Without an explicit key, the identity is derived from `(moduleType, module.identityKey, route, args)`. Set `retentionKey` when you need deterministic cache identity independent of route metadata.
 
 ::: warning
 `overrideScope` does **not** affect the retention key. Two scopes with the same key but different overrides share one cached controller. Include override identity in the key if needed.

@@ -62,6 +62,16 @@ enum ModuleStatus {
 /// - [Configurable] for modules that accept runtime configuration.
 /// - [ModuleStatus] for the lifecycle state machine.
 abstract class Module {
+  /// Optional identity used to distinguish multiple instances of the same
+  /// module type in an import graph.
+  ///
+  /// By default, imported modules are deduplicated by their runtime type and
+  /// override scope. Override this getter when two instances of the same module
+  /// class can be imported at the same time with different constructor state.
+  ///
+  /// The value must be immutable and have stable `==` / `hashCode`.
+  Object? get identityKey => null;
+
   /// Modules that this module depends on.
   ///
   /// Imports are resolved and initialized **before** this module's [binds]
@@ -106,8 +116,9 @@ abstract class Module {
   /// Resource cleanup hook.
   ///
   /// Called when the module is being disposed. Release connections, cancel
-  /// subscriptions, or perform other cleanup here.
-  void onDispose() {}
+  /// subscriptions, or perform other cleanup here. Return a [Future] when
+  /// cleanup needs to wait for async resources such as databases or sockets.
+  FutureOr<void> onDispose() {}
 
   /// Hot-reload hook.
   ///

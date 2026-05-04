@@ -87,6 +87,44 @@ class FailingOnInitModule extends Module {
   }
 }
 
+class SlowInitModule extends Module {
+  SlowInitModule(this.allowInit);
+
+  final Completer<void> allowInit;
+  int initCount = 0;
+  int disposeCount = 0;
+
+  @override
+  void binds(Binder i) {}
+
+  @override
+  Future<void> onInit() async {
+    initCount++;
+    await allowInit.future;
+  }
+
+  @override
+  void onDispose() {
+    disposeCount++;
+  }
+}
+
+class AsyncDisposeModule extends Module {
+  AsyncDisposeModule(this.allowDispose);
+
+  final Completer<void> allowDispose;
+  bool disposed = false;
+
+  @override
+  void binds(Binder i) {}
+
+  @override
+  Future<void> onDispose() async {
+    await allowDispose.future;
+    disposed = true;
+  }
+}
+
 class _TestInterceptor implements ModuleInterceptor {
   final List<String> events = [];
 
@@ -103,6 +141,38 @@ class _TestInterceptor implements ModuleInterceptor {
   @override
   void onDispose(Module module) =>
       events.add('onDispose:${module.runtimeType}');
+}
+
+class ThrowingOnInitInterceptor implements ModuleInterceptor {
+  @override
+  void onInit(Module module) {
+    throw Exception('interceptor onInit failed');
+  }
+
+  @override
+  void onLoaded(Module module) {}
+
+  @override
+  void onError(Module module, Object error) {}
+
+  @override
+  void onDispose(Module module) {}
+}
+
+class ThrowingOnErrorInterceptor implements ModuleInterceptor {
+  @override
+  void onInit(Module module) {}
+
+  @override
+  void onLoaded(Module module) {}
+
+  @override
+  void onError(Module module, Object error) {
+    throw Exception('interceptor onError failed');
+  }
+
+  @override
+  void onDispose(Module module) {}
 }
 
 class OverridableModule extends Module {
@@ -160,8 +230,9 @@ class HotReloadModule extends Module {
   @override
   void binds(Binder i) {
     bindsCount++;
-    i.registerLazySingleton<PublicService>(() => PublicService());
-    i.registerFactory<HotReloadFactory>(() => HotReloadFactory(bindsCount));
+    i
+      ..registerLazySingleton<PublicService>(() => PublicService())
+      ..registerFactory<HotReloadFactory>(() => HotReloadFactory(bindsCount));
   }
 }
 
@@ -192,6 +263,45 @@ class ParentOverridesModule extends Module {
 class MockService extends PublicService {}
 
 class AnotherMockService extends PublicService {}
+
+class SharedDisposableModule extends Module {
+  static int initCount = 0;
+  static int disposeCount = 0;
+
+  static void resetCounts() {
+    initCount = 0;
+    disposeCount = 0;
+  }
+
+  @override
+  void binds(Binder i) {}
+
+  @override
+  Future<void> onInit() async {
+    initCount++;
+  }
+
+  @override
+  void onDispose() {
+    disposeCount++;
+  }
+}
+
+class FirstSharedConsumerModule extends Module {
+  @override
+  List<Module> get imports => [SharedDisposableModule()];
+
+  @override
+  void binds(Binder i) {}
+}
+
+class SecondSharedConsumerModule extends Module {
+  @override
+  List<Module> get imports => [SharedDisposableModule()];
+
+  @override
+  void binds(Binder i) {}
+}
 
 void main() {
   group('ModuleRegistryKey', () {
@@ -238,6 +348,51 @@ void main() {
       );
 
       expect(key1, isNot(equals(key2)));
+    });
+
+    test('equal when same type and same moduleIdentity', () {
+      final key1 = ModuleRegistryKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'profile:1',
+      );
+      final key2 = ModuleRegistryKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'profile:1',
+      );
+
+      expect(key1, equals(key2));
+      expect(key1.hashCode, equals(key2.hashCode));
+    });
+
+    test('not equal when different moduleIdentity values', () {
+      final key1 = ModuleRegistryKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'profile:1',
+      );
+      final key2 = ModuleRegistryKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'profile:2',
+      );
+
+      expect(key1, isNot(equals(key2)));
+    });
+
+    test('graph node key ignores overrideScope and uses module identity', () {
+      const node1 = ModuleGraphNodeKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'tenant-a',
+      );
+      const node2 = ModuleGraphNodeKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'tenant-a',
+      );
+      const node3 = ModuleGraphNodeKey(
+        moduleType: ProviderModule,
+        moduleIdentity: 'tenant-b',
+      );
+
+      expect(node1, equals(node2));
+      expect(node1, isNot(equals(node3)));
     });
 
     test('not equal when one has null overrideScope and other does not', () {
@@ -459,6 +614,84 @@ void main() {
 
       expect(controller.currentStatus, equals(ModuleStatus.error));
     });
+
+    test('concurrent initialize calls share the same initialization', () async {
+      final allowInit = Completer<void>();
+      final module = SlowInitModule(allowInit);
+      final controller = ModuleController(module);
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      final first = controller.initialize(registry);
+      final second = controller.initialize(registry);
+
+      expect(second, same(first));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.currentStatus, equals(ModuleStatus.loading));
+      expect(module.initCount, equals(1));
+
+      allowInit.complete();
+      await Future.wait([first, second]);
+
+      expect(controller.currentStatus, equals(ModuleStatus.loaded));
+      expect(module.initCount, equals(1));
+    });
+
+    test('dispose during initialization waits and finishes disposed', () async {
+      final allowInit = Completer<void>();
+      final module = SlowInitModule(allowInit);
+      final controller = ModuleController(module);
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      final initFuture = controller.initialize(registry);
+      await Future<void>.delayed(Duration.zero);
+
+      final disposeFuture = controller.dispose();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.currentStatus, equals(ModuleStatus.loading));
+      expect(module.disposeCount, equals(0));
+
+      allowInit.complete();
+      await initFuture;
+      await disposeFuture;
+
+      expect(controller.currentStatus, equals(ModuleStatus.disposed));
+      expect(module.disposeCount, equals(1));
+    });
+
+    test('initialize after dispose throws lifecycle exception', () async {
+      final controller = ModuleController(LifecycleOrderModule());
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      await controller.initialize(registry);
+      await controller.dispose();
+
+      await expectLater(
+        () => controller.initialize(registry),
+        throwsA(isA<ModuleLifecycleException>()),
+      );
+      expect(controller.currentStatus, equals(ModuleStatus.disposed));
+    });
+
+    test(
+      'initialize after failed initialization throws lifecycle exception',
+      () async {
+        final controller = ModuleController(FailingOnInitModule());
+        final registry = <ModuleRegistryKey, ModuleController>{};
+
+        await expectLater(
+          () => controller.initialize(registry),
+          throwsA(isA<Exception>()),
+        );
+
+        await expectLater(
+          () => controller.initialize(registry),
+          throwsA(isA<ModuleLifecycleException>()),
+        );
+        expect(controller.currentStatus, equals(ModuleStatus.error));
+      },
+    );
   });
 
   group('ModuleController interceptors', () {
@@ -488,6 +721,46 @@ void main() {
       );
 
       expect(interceptor.events, contains('onError:FailingBindsModule'));
+    });
+
+    test('onInit interceptor failures move controller to error', () async {
+      final controller = ModuleController(
+        LifecycleOrderModule(),
+        interceptors: [ThrowingOnInitInterceptor()],
+      );
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      await expectLater(
+        () => controller.initialize(registry),
+        throwsA(
+          predicate<Object>(
+            (error) => error.toString().contains('interceptor onInit failed'),
+          ),
+        ),
+      );
+
+      expect(controller.currentStatus, equals(ModuleStatus.error));
+      expect(controller.lastError.toString(), contains('interceptor onInit'));
+    });
+
+    test('onError interceptor failures do not mask original error', () async {
+      final controller = ModuleController(
+        FailingBindsModule(),
+        interceptors: [ThrowingOnErrorInterceptor()],
+      );
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      await expectLater(
+        () => controller.initialize(registry),
+        throwsA(
+          predicate<Object>(
+            (error) => error.toString().contains('binds error'),
+          ),
+        ),
+      );
+
+      expect(controller.currentStatus, equals(ModuleStatus.error));
+      expect(controller.lastError.toString(), contains('binds error'));
     });
 
     test('interceptors receive onDispose', () async {
@@ -531,6 +804,34 @@ void main() {
       expect(module.config?.value, equals('test_value'));
       expect(controller.binder.get<ConfigData>().value, equals('test_value'));
     });
+
+    test('wrong configure args move controller to error', () {
+      final controller = ModuleController(ConfigurableModule());
+
+      expect(
+        () => controller.configure('wrong_type'),
+        throwsA(isA<ModuleLifecycleException>()),
+      );
+      expect(controller.currentStatus, equals(ModuleStatus.error));
+      expect(controller.lastError, isA<ModuleLifecycleException>());
+    });
+
+    test(
+      'configure after initialization has started throws lifecycle error',
+      () async {
+        final controller = ModuleController(ConfigurableModule());
+        final registry = <ModuleRegistryKey, ModuleController>{};
+
+        controller.configure(ConfigData('test_value'));
+        await controller.initialize(registry);
+
+        expect(
+          () => controller.configure(ConfigData('another_value')),
+          throwsA(isA<ModuleLifecycleException>()),
+        );
+        expect(controller.currentStatus, equals(ModuleStatus.loaded));
+      },
+    );
   });
 
   group('ModuleController dispose', () {
@@ -543,6 +844,81 @@ void main() {
       await controller.dispose();
 
       expect(controller.currentStatus, equals(ModuleStatus.disposed));
+    });
+
+    test('dispose before initialize does not call module cleanup', () async {
+      final module = SlowInitModule(Completer<void>());
+      final controller = ModuleController(module);
+
+      await controller.dispose();
+
+      expect(controller.currentStatus, equals(ModuleStatus.disposed));
+      expect(module.disposeCount, equals(0));
+    });
+
+    test('dispose waits for async module cleanup', () async {
+      final allowDispose = Completer<void>();
+      final module = AsyncDisposeModule(allowDispose);
+      final controller = ModuleController(module);
+      final registry = <ModuleRegistryKey, ModuleController>{};
+
+      await controller.initialize(registry);
+
+      final disposeFuture = controller.dispose();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.currentStatus, equals(ModuleStatus.disposed));
+      expect(module.disposed, isFalse);
+
+      allowDispose.complete();
+      await disposeFuture;
+
+      expect(module.disposed, isTrue);
+    });
+
+    test(
+      'shared imports dispose only after all dependents release them',
+      () async {
+        SharedDisposableModule.resetCounts();
+        final registry = <ModuleRegistryKey, ModuleController>{};
+        final firstController = ModuleController(FirstSharedConsumerModule());
+        final secondController = ModuleController(SecondSharedConsumerModule());
+
+        await firstController.initialize(registry);
+        await secondController.initialize(registry);
+
+        expect(SharedDisposableModule.initCount, equals(1));
+
+        await firstController.dispose();
+
+        expect(SharedDisposableModule.disposeCount, equals(0));
+
+        await secondController.dispose();
+
+        expect(SharedDisposableModule.disposeCount, equals(1));
+      },
+    );
+
+    test('disposed imported controllers are recreated from registry', () async {
+      SharedDisposableModule.resetCounts();
+      final registry = <ModuleRegistryKey, ModuleController>{};
+      final firstController = ModuleController(FirstSharedConsumerModule());
+
+      await firstController.initialize(registry);
+      await firstController.dispose();
+
+      expect(SharedDisposableModule.disposeCount, equals(1));
+
+      final secondController = ModuleController(SecondSharedConsumerModule());
+      await secondController.initialize(registry);
+
+      expect(SharedDisposableModule.initCount, equals(2));
+      expect(
+        secondController.importedControllers.single.currentStatus,
+        equals(ModuleStatus.loaded),
+      );
+
+      await secondController.dispose();
     });
   });
 

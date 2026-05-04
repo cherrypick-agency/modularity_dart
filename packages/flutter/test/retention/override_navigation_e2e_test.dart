@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:modularity_flutter/modularity_flutter.dart';
@@ -126,23 +128,25 @@ void main() {
         expect(module1.initCount, 1);
         expect(retainer.debugSnapshot().length, 1);
 
-        navigatorKey.currentState!.push(
-          MaterialPageRoute<void>(
-            builder: (_) => ModuleScope(
-              module: module2,
-              retentionPolicy: ModuleRetentionPolicy.keepAlive,
-              retentionKey: 'config-variant-b',
-              overrideScope: overrideScopeB,
-              child: Builder(
-                builder: (context) {
-                  final service = ModuleProvider.of(
-                    context,
-                  ).get<ConfigService>();
-                  return Text(
-                    'Route2: ${service.variant}',
-                    textDirection: TextDirection.ltr,
-                  );
-                },
+        unawaited(
+          navigatorKey.currentState!.push(
+            MaterialPageRoute<void>(
+              builder: (_) => ModuleScope(
+                module: module2,
+                retentionPolicy: ModuleRetentionPolicy.keepAlive,
+                retentionKey: 'config-variant-b',
+                overrideScope: overrideScopeB,
+                child: Builder(
+                  builder: (context) {
+                    final service = ModuleProvider.of(
+                      context,
+                    ).get<ConfigService>();
+                    return Text(
+                      'Route2: ${service.variant}',
+                      textDirection: TextDirection.ltr,
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -153,10 +157,12 @@ void main() {
         expect(module2.initCount, 1);
         expect(retainer.debugSnapshot().length, 2);
 
-        navigatorKey.currentState!.pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                const Text('Empty', textDirection: TextDirection.ltr),
+        unawaited(
+          navigatorKey.currentState!.pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  const Text('Empty', textDirection: TextDirection.ltr),
+            ),
           ),
         );
         await tester.pumpAndSettle();
@@ -223,31 +229,35 @@ void main() {
         expect(find.text('Route1: variant-a'), findsOneWidget);
         expect(module1.initCount, 1);
 
-        navigatorKey.currentState!.push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                const Text('Intermediate', textDirection: TextDirection.ltr),
+        unawaited(
+          navigatorKey.currentState!.push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  const Text('Intermediate', textDirection: TextDirection.ltr),
+            ),
           ),
         );
         await tester.pumpAndSettle();
 
-        navigatorKey.currentState!.push(
-          MaterialPageRoute<void>(
-            builder: (_) => ModuleScope(
-              module: module2,
-              retentionPolicy: ModuleRetentionPolicy.keepAlive,
-              retentionKey: 'shared-key',
-              overrideScope: overrideB,
-              child: Builder(
-                builder: (context) {
-                  final service = ModuleProvider.of(
-                    context,
-                  ).get<ConfigService>();
-                  return Text(
-                    'Route3: ${service.variant}',
-                    textDirection: TextDirection.ltr,
-                  );
-                },
+        unawaited(
+          navigatorKey.currentState!.push(
+            MaterialPageRoute<void>(
+              builder: (_) => ModuleScope(
+                module: module2,
+                retentionPolicy: ModuleRetentionPolicy.keepAlive,
+                retentionKey: 'shared-key',
+                overrideScope: overrideB,
+                child: Builder(
+                  builder: (context) {
+                    final service = ModuleProvider.of(
+                      context,
+                    ).get<ConfigService>();
+                    return Text(
+                      'Route3: ${service.variant}',
+                      textDirection: TextDirection.ltr,
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -294,8 +304,10 @@ void main() {
         ]),
       );
 
-      navigatorKey.currentState!.pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+      unawaited(
+        navigatorKey.currentState!.pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -335,10 +347,12 @@ void main() {
       expect(module.initCount, 1);
       expect(module.disposeCount, 0);
 
-      navigatorKey.currentState!.push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              const Text('Detail', textDirection: TextDirection.ltr),
+      unawaited(
+        navigatorKey.currentState!.push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const Text('Detail', textDirection: TextDirection.ltr),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -353,10 +367,12 @@ void main() {
       expect(module.disposeCount, 0);
       expect(find.text('Home'), findsOneWidget);
 
-      navigatorKey.currentState!.pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              const Text('Replaced', textDirection: TextDirection.ltr),
+      unawaited(
+        navigatorKey.currentState!.pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const Text('Replaced', textDirection: TextDirection.ltr),
+          ),
         ),
       );
       await tester.pumpAndSettle();

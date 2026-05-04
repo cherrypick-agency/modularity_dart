@@ -13,8 +13,9 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 /// 2. If the [module] implements [RetentionIdentityProvider], its
 ///    [RetentionIdentityProvider.buildRetentionIdentity] is called. A non-null
 ///    result is returned directly.
-/// 3. Otherwise a composite hash is computed from the module type, the
-///    enclosing route, [args], [parentKey], and [extras].
+/// 3. Otherwise a composite hash is computed from the module type,
+///    [Module.identityKey], the enclosing route, [args], [parentKey], and
+///    [extras].
 Object deriveRetentionKey({
   required Module module,
   required BuildContext context,
@@ -28,6 +29,7 @@ Object deriveRetentionKey({
   final route = ModalRoute.of(context);
   final contextPayload = ModuleRetentionContext(
     moduleType: module.runtimeType,
+    moduleIdentityKey: module.identityKey,
     routeName: route?.settings.name,
     routePath: route?.settings.name,
     argumentsHash: _stableHash(args),
@@ -42,6 +44,7 @@ Object deriveRetentionKey({
 
   return Object.hashAll([
     contextPayload.moduleType,
+    _stableHash(contextPayload.moduleIdentityKey),
     contextPayload.routeName,
     contextPayload.routePath,
     contextPayload.argumentsHash,

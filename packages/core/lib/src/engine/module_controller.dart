@@ -4,6 +4,7 @@ import 'package:modularity_contracts/modularity_contracts.dart';
 
 import '../di/simple_binder_factory.dart';
 import '../graph/graph_resolver.dart';
+import '../graph/module_graph_node_key.dart';
 import '../graph/module_registry_key.dart';
 import 'module_override_scope.dart';
 
@@ -77,6 +78,11 @@ class ModuleController {
   List<ModuleController> get importedControllers =>
       List.unmodifiable(_importedControllers);
   final List<ModuleController> _importedControllers = [];
+  bool _importsRetained = false;
+  int _dependentCount = 0;
+  Future<void>? _initializeFuture;
+  Future<void>? _disposeFuture;
+  bool _lifecycleStarted = false;
 
   /// Broadcast stream of [ModuleStatus] transitions.
   Stream<ModuleStatus> get status => _statusController.stream;
@@ -101,18 +107,29 @@ class ModuleController {
   /// Throws [ModuleLifecycleException] if the module implements [Configurable]
   /// but the argument type does not match.
   void configure(dynamic args) {
+    if (_currentStatus != ModuleStatus.initial) {
+      throw ModuleLifecycleException(
+        'Module ${module.runtimeType} cannot be configured after initialization has started.',
+        moduleType: module.runtimeType,
+        state: _currentStatus,
+      );
+    }
+
     if (module is Configurable) {
       try {
         (module as Configurable).configure(args);
-      } catch (e) {
+      } catch (error) {
         // Handle generic type mismatch gracefully or rethrow
         // If we pass wrong type to configure(T args), Dart throws TypeError.
-        throw ModuleLifecycleException(
+        final exception = ModuleLifecycleException(
           'Module ${module.runtimeType} failed to configure: '
           'Expected arguments of correct type for Configurable<T>.\n'
-          'Error: $e',
+          'Error: $error',
           moduleType: module.runtimeType,
         );
+        _lastError = exception;
+        _updateStatus(ModuleStatus.error);
+        throw exception;
       }
     }
   }
@@ -120,27 +137,64 @@ class ModuleController {
   /// Runs the full initialization lifecycle for this module.
   ///
   /// Uses [globalModuleRegistry] to deduplicate module controllers across
-  /// concurrent import branches. Pass [resolutionStack] for cycle detection.
+  /// concurrent import branches. Pass [graphResolutionStack] for cycle
+  /// detection when resolving nested imports.
   ///
   /// Throws [CircularDependencyException], [ModuleConfigurationException],
   /// or [ModuleLifecycleException] on failure.
   Future<void> initialize(
     Map<ModuleRegistryKey, ModuleController> globalModuleRegistry, {
+
+    /// Legacy type-only cycle stack. Prefer [graphResolutionStack].
     Set<Type>? resolutionStack,
+    Set<ModuleGraphNodeKey>? graphResolutionStack,
+  }) {
+    switch (_currentStatus) {
+      case ModuleStatus.initial:
+        _initializeFuture ??= _initializeInternal(
+          globalModuleRegistry,
+          resolutionStack: resolutionStack,
+          graphResolutionStack: graphResolutionStack,
+        );
+        return _initializeFuture!;
+      case ModuleStatus.loading:
+        return _initializeFuture ?? Future<void>.value();
+      case ModuleStatus.loaded:
+        return Future<void>.value();
+      case ModuleStatus.error:
+        return Future<void>.error(
+          ModuleLifecycleException(
+            'Module ${module.runtimeType} failed to initialize previously. '
+            'Create a new ModuleController to retry initialization.',
+            moduleType: module.runtimeType,
+            state: ModuleStatus.error,
+          ),
+        );
+      case ModuleStatus.disposed:
+        return Future<void>.error(
+          ModuleLifecycleException(
+            'Module ${module.runtimeType} has been disposed and cannot be initialized again.',
+            moduleType: module.runtimeType,
+            state: ModuleStatus.disposed,
+          ),
+        );
+    }
+  }
+
+  Future<void> _initializeInternal(
+    Map<ModuleRegistryKey, ModuleController> globalModuleRegistry, {
+    Set<Type>? resolutionStack,
+    Set<ModuleGraphNodeKey>? graphResolutionStack,
   }) async {
-    if (_currentStatus == ModuleStatus.loading ||
-        _currentStatus == ModuleStatus.loaded) {
-      return;
-    }
-
-    // Interceptor: onInit
-    for (var i in interceptors) {
-      i.onInit(module);
-    }
-
+    _lifecycleStarted = true;
     _updateStatus(ModuleStatus.loading);
 
     try {
+      // Interceptor: onInit
+      for (final interceptor in interceptors) {
+        interceptor.onInit(module);
+      }
+
       // 1. Resolve Imports via GraphResolver
       final resolver = GraphResolver();
       final imports = await resolver.resolveAndInitImports(
@@ -148,11 +202,12 @@ class ModuleController {
         globalModuleRegistry,
         _binderFactory,
         resolutionStack: resolutionStack,
+        graphResolutionStack: graphResolutionStack,
         interceptors: interceptors,
         overrideScope: overrideScope,
       );
 
-      _importedControllers.addAll(imports);
+      _retainImports(imports);
       final importBinders = imports.map((c) => c.binder).toList();
 
       // 2. Configure Binder with imports
@@ -174,18 +229,7 @@ class ModuleController {
       }
 
       // 4. Binds (Private & Public)
-      final exportable = binder is ExportableBinder
-          ? binder as ExportableBinder
-          : null;
-      exportable?.disableExportMode();
-      module.binds(binder);
-
-      _applyOverridesIfNeeded();
-
-      exportable?.enableExportMode();
-      module.exports(binder);
-      exportable?.disableExportMode();
-      exportable?.sealPublicScope();
+      _runBindsAndExports();
 
       // 5. Async Init
       await module.onInit();
@@ -193,19 +237,40 @@ class ModuleController {
       _updateStatus(ModuleStatus.loaded);
 
       // Interceptor: onLoaded
-      for (var i in interceptors) {
-        i.onLoaded(module);
+      for (final interceptor in interceptors) {
+        interceptor.onLoaded(module);
       }
-    } catch (e) {
-      _lastError = e;
+    } catch (error, stackTrace) {
+      _lastError = error;
       _updateStatus(ModuleStatus.error);
 
-      // Interceptor: onError
-      for (var i in interceptors) {
-        i.onError(module, e);
+      Object? firstError = error;
+      StackTrace? firstStackTrace = stackTrace;
+
+      void preserveFirstError(
+        Object cleanupError,
+        StackTrace cleanupStackTrace,
+      ) {
+        firstError ??= cleanupError;
+        firstStackTrace ??= cleanupStackTrace;
       }
 
-      rethrow;
+      try {
+        await _releaseRetainedImports(<ModuleController>{this});
+      } catch (cleanupError, cleanupStackTrace) {
+        preserveFirstError(cleanupError, cleanupStackTrace);
+      }
+
+      // Interceptor: onError
+      for (final interceptor in interceptors) {
+        try {
+          interceptor.onError(module, error);
+        } catch (interceptorError, interceptorStackTrace) {
+          preserveFirstError(interceptorError, interceptorStackTrace);
+        }
+      }
+
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
     }
   }
 
@@ -221,27 +286,13 @@ class ModuleController {
     // For MVP we simply call the hook and overwrite registrations.
     // In the future SimpleBinder should support "updateFactoryOnly".
 
-    void rebind() {
-      final exportable = binder is ExportableBinder
-          ? binder as ExportableBinder
-          : null;
-      exportable?.resetPublicScope();
-      exportable?.disableExportMode();
-      module.binds(binder);
-      _applyOverridesIfNeeded();
-      exportable?.enableExportMode();
-      module.exports(binder);
-      exportable?.disableExportMode();
-      exportable?.sealPublicScope();
-    }
-
     final aware = _registrationAwareBinder;
     if (aware != null) {
       aware.runWithStrategy(RegistrationStrategy.preserveExisting, () {
-        rebind();
+        _runBindsAndExports(resetPublicScope: true);
       });
     } else {
-      rebind();
+      _runBindsAndExports(resetPublicScope: true);
     }
 
     // User hook
@@ -252,25 +303,123 @@ class ModuleController {
   ///
   /// Calls [Module.onDispose], then [DisposableBinder.dispose] if the
   /// binder supports it, and finally closes the [status] stream.
-  Future<void> dispose() async {
+  Future<void> dispose() {
+    return _disposeFuture ??= _disposeInternal(<ModuleController>{});
+  }
+
+  Future<void> _disposeInternal(Set<ModuleController> visited) async {
+    if (_currentStatus == ModuleStatus.disposed || !visited.add(this)) {
+      return;
+    }
+
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    Future<void> guard(FutureOr<void> Function() body) async {
+      try {
+        await Future.sync(body);
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    if (_currentStatus == ModuleStatus.loading && _initializeFuture != null) {
+      await guard(() => _initializeFuture!);
+    }
+
+    if (_currentStatus == ModuleStatus.disposed) {
+      return;
+    }
+
     _updateStatus(ModuleStatus.disposed);
 
-    // Interceptor: onDispose (before closing stream so listeners can still react)
-    for (var i in interceptors) {
-      i.onDispose(module);
+    // Interceptor: onDispose (before closing stream so listeners can still react).
+    for (final interceptor in interceptors) {
+      await guard(() => interceptor.onDispose(module));
     }
 
-    module.onDispose();
-    if (binder is DisposableBinder) {
-      await (binder as DisposableBinder).dispose();
+    if (_lifecycleStarted) {
+      await guard(module.onDispose);
     }
+    if (binder is DisposableBinder) {
+      final disposableBinder = binder as DisposableBinder;
+      await guard(disposableBinder.dispose);
+    }
+
+    await guard(() => _releaseRetainedImports(visited));
+
+    if (!_statusController.isClosed) {
+      await _statusController.close();
+    }
+
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    }
+  }
+
+  void _retainImports(List<ModuleController> imports) {
+    if (imports.isEmpty) return;
+
+    _importedControllers.addAll(imports);
+
+    for (final controller in <ModuleController>{...imports}) {
+      controller._dependentCount++;
+    }
+
+    _importsRetained = true;
+  }
+
+  Future<void> _releaseRetainedImports(Set<ModuleController> visited) async {
+    if (!_importsRetained) return;
+
+    final imports = <ModuleController>{..._importedControllers}.toList();
     _importedControllers.clear();
-    await _statusController.close();
+    _importsRetained = false;
+
+    for (final controller in imports.reversed) {
+      await controller._releaseDependent(visited);
+    }
+  }
+
+  Future<void> _releaseDependent(Set<ModuleController> visited) async {
+    if (_dependentCount > 0) {
+      _dependentCount--;
+    }
+
+    if (_dependentCount > 0) return;
+
+    await (_disposeFuture ??= _disposeInternal(visited));
   }
 
   void _updateStatus(ModuleStatus newStatus) {
     _currentStatus = newStatus;
-    _statusController.add(newStatus);
+    if (!_statusController.isClosed) {
+      _statusController.add(newStatus);
+    }
+  }
+
+  void _runBindsAndExports({bool resetPublicScope = false}) {
+    final exportable = binder is ExportableBinder
+        ? binder as ExportableBinder
+        : null;
+
+    if (resetPublicScope) {
+      exportable?.resetPublicScope();
+    }
+
+    exportable?.disableExportMode();
+    module.binds(binder);
+    _applyOverridesIfNeeded();
+
+    try {
+      exportable?.enableExportMode();
+      module.exports(binder);
+    } finally {
+      exportable?.disableExportMode();
+    }
+
+    exportable?.sealPublicScope();
   }
 
   void _applyOverridesIfNeeded() {
