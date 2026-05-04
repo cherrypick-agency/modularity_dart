@@ -84,9 +84,7 @@ melos:
       description: Run all tests across the entire workspace.
 
     test:coverage:
-      exec: flutter test --coverage
-      packageFilters:
-        dirExists: test
+      run: dart run melos exec --concurrency=1 --dir-exists=test -- "flutter test --coverage"
       description: Run tests with coverage for all packages with a test directory.
 
     coverage:report:
