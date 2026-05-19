@@ -5,15 +5,17 @@
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
-    "preview": "vitepress preview"
+    "preview": "vitepress preview",
+    "docs:gen": "bash generate.sh",
+    "docs:check": "bash -c 'if [ ! -d \".vitepress/generated\" ] || [ ! -d \"guide/modularity_workspace\" ]; then echo \"❌ Generated files not found - run: npm run docs:gen (or pnpm docs:gen)\"; exit 1; fi'"
   },
   "devDependencies": {
     "vitepress": "^1.6.4"
   },
   "dependencies": {
-    "mermaid": "^11.12.2",
+    "mermaid": "^11.15.0",
     "vitepress-codeblock-collapse": "^1.0.0",
-    "vitepress-mermaid-zoom": "latest",
+    "vitepress-mermaid-zoom": "^1.0.2",
     "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

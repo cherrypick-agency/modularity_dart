@@ -1,4 +1,4 @@
-# Best Practices
+# ✅ Best Practices
 
 Practical guidelines for designing modules, managing dependencies, and avoiding common pitfalls.
 
@@ -158,7 +158,9 @@ class DatabaseModule extends Module {
 
   @override
   Future<void> onInit() async {
-    final db = binder.get<Database>(); // won't work -- no binder access here
+    // There is no Binder in this hook.
+    // If you need async init that touches dependencies, delegate it to a
+    // service you register in binds() (see example below).
   }
 }
 ```
@@ -294,7 +296,7 @@ void binds(Binder i) {
 }
 ```
 
-This works at runtime because `registerLazySingleton` defers creation. But it fails with `RecordingBinder` during static analysis. **Fix:** Order registrations so dependencies are registered before dependents, or rely on the fact that lazy resolution defers the `get` call.
+`registerLazySingleton` defers instance creation, so at runtime the dependency is available when the factory is first called. However, relying on registration order is fragile — if a future refactor changes the order, the error surfaces late. **Fix:** Order registrations so dependencies are registered before dependents.
 
 ### Ignoring expects
 

@@ -2,9 +2,9 @@
 
 > **Transparency note**: This comparison is maintained by the Modularity team. We have done our best to be fair and accurate, but we are naturally biased toward our own project. If you find inaccuracies, please [open an issue](https://github.com/cherrypick-agency/modularity_dart/issues) or submit a PR.
 >
-> Modularity is at **v0.2.0** — a young framework. Established alternatives have significant advantages in ecosystem maturity and community support.
+> Modularity is at **v0.2.1** (core) / **v0.3.1** (flutter) as of **2026-05-19** - a young framework. Established alternatives have significant advantages in ecosystem maturity and community support.
 >
-> Last updated: February 2026
+> Last updated: 2026-05-19
 
 ---
 
@@ -45,12 +45,13 @@ If you're coming from **Android**, think of it as Hilt's `@Module` + component s
 
 ## Detailed Comparisons
 
+<a id="get-it-injectable"></a>
 ### get_it + injectable
 
 The most widely used DI combination in the Flutter ecosystem.
 
 - **What it is**: get_it is a runtime service locator with O(1) lookup. injectable is a code generator that automates get_it registration using annotations (`@singleton`, `@lazySingleton`, `@injectable`, `@module`).
-- **Adoption**: get_it has **4,650+ pub.dev likes** and ~1.5M total downloads. injectable has **1,430+ likes**. Used by Very Good Ventures, Invertase, and the majority of enterprise Flutter teams.
+- **Adoption**: Widely used in production Flutter apps, especially in teams that prefer annotation-driven wiring.
 - **Pros**:
   - De facto industry standard — massive community, tutorials, and proven track record.
   - Annotation-driven registration eliminates boilerplate (`@singleton`, `@lazySingleton`).
@@ -79,7 +80,7 @@ The most widely used DI combination in the Flutter ecosystem.
 The most popular state management framework in Flutter, with strong DI capabilities.
 
 - **What it is**: A reactive caching and data-binding framework with compile-time-safe provider graph. Created by Remi Rousselet (also the creator of Provider).
-- **Adoption**: **7,100+ GitHub stars**, **2,820+ pub.dev likes**, 1.24M total downloads. Flutter Favorite.
+- **Adoption**: One of the most popular Flutter state management solutions (provider graph + caching + overrides).
 - **Pros**:
   - **Compile-time safety** — missing provider = compile error (with riverpod_generator).
   - **No service locator** — dependencies declared via `ref.watch()`, making the graph explicit and traceable.
@@ -110,7 +111,7 @@ The most popular state management framework in Flutter, with strong DI capabilit
 The most direct competitor — an all-in-one framework combining DI, routing, and module lifecycle.
 
 - **What it is**: A framework by Flutterando where each Module declares `binds()` for DI and `routes()` for navigation, forming a module tree.
-- **Adoption**: **1,400 GitHub stars**, **1,320 pub.dev likes**, ~73,600 weekly downloads. 6+ years of production use, 79 contributors.
+- **Adoption**: Established community and multi-year production usage.
 - **Pros**:
   - **Unified DI + routing** — reduces integration complexity.
   - **Automatic dependency resolution** via `auto_injector` (constructor-based, no code generation).
@@ -127,7 +128,7 @@ The most direct competitor — an all-in-one framework combining DI, routing, an
   - **No formal module state machine** (`initial`/`loading`/`loaded`/`error`/`disposed`).
   - **No typed module configuration** — uses route arguments instead of `Configurable<T>`.
   - **No interceptor/observer system** for cross-cutting module lifecycle concerns.
-  - **Documentation reliability** — site has had availability issues.
+  - **Docs drift** — verify behaviors against the current official documentation for your installed version.
 
 **Where flutter_modular is better than Modularity**: Integrated routing + DI, auto-injector (no codegen, no manual registration), route guards, auto-dispose, community size, proven track record, backend support.
 
@@ -140,7 +141,7 @@ The most direct competitor — an all-in-one framework combining DI, routing, an
 A build-time modularity strategy, not a runtime framework. In practice, always combined with a DI solution.
 
 - **What it is**: Melos is a monorepo management tool. Each feature is a separate Dart package (`feature_auth`, `feature_profile`, etc.) with its own `pubspec.yaml`, tests, and CI.
-- **Adoption**: **892 pub.dev likes**, ~725K weekly downloads. Used by Very Good Ventures, Invertase, and most large Flutter teams. Dart 3.5+ also provides native [pub workspaces](https://dart.dev/tools/pub/workspaces) for shared dependency resolution.
+- **Adoption**: Widely used monorepo tool in Dart/Flutter. Dart also provides native [pub workspaces](https://dart.dev/tools/pub/workspaces) for shared dependency resolution.
 - **Pros**:
   - **Compile-time boundaries** — Dart's package system enforces visibility at the compiler level.
   - **Independent CI/CD** — each package can be tested and published independently.
@@ -159,10 +160,10 @@ A build-time modularity strategy, not a runtime framework. In practice, always c
 
 ### Provider
 
-The officially recommended DI solution by the Flutter team.
+A common DI pattern in Flutter apps.
 
 - **What it is**: An `InheritedWidget` wrapper that provides objects to descendant widgets via `BuildContext`.
-- **Adoption**: Recommended in Google's official Flutter architecture guide. **4,900+ pub.dev likes**.
+- **Adoption**: Long-standing and widely used across Flutter apps and tutorials.
 - **Pros**:
   - Simple, well-documented, officially recommended.
   - Zero code generation, minimal learning curve.
@@ -180,7 +181,7 @@ The officially recommended DI solution by the Flutter team.
 An event-driven state management pattern, not a DI or modularity solution.
 
 - **What it is**: Business Logic Component pattern using Streams for unidirectional data flow. `flutter_bloc` provides `BlocProvider` for widget-tree-based provision.
-- **Adoption**: **3,800+ pub.dev likes**. One of the most adopted patterns in Flutter.
+- **Adoption**: Popular pattern with a large ecosystem in Flutter.
 - **Pros**:
   - Strong separation of concerns — predictable state transitions.
   - Excellent testing via `blocTest()` (unit tests, not just widget tests).
@@ -210,7 +211,7 @@ This table includes categories where Modularity excels **and** categories where 
 | **Router integration** | Any router (via adapters) | Any router (no coupling) | Any router (no coupling) | Built-in only (lock-in) |
 | **Testability** | `testModule` + `TestBinder` | Override registrations, mock anything | One-line provider overrides | Module unit testing |
 | **Boilerplate** | Medium-high (module class, binds, exports) | Low with codegen annotations | Low with codegen | Medium (binds + routes) |
-| **Community & ecosystem** | Small (pre-release, new) | Very large (4,650+ likes) | Very large (7,100+ stars) | Medium (1,400 stars, 6+ years) |
+| **Community & ecosystem** | Small (pre-release, new) | Very large | Very large | Medium |
 | **Documentation** | Growing (VitePress, in development) | Extensive | Excellent (official, courses, books) | Established (migration guides) |
 | **Production track record** | Limited | Extensive (industry standard) | Extensive (millions of users) | Established (6+ years) |
 | **Learning curve** | High (many concepts) | Low-Medium | Medium (with codegen) | Medium |
@@ -235,7 +236,7 @@ This table includes categories where Modularity excels **and** categories where 
 
 ## Modularity's Honest Status
 
-Modularity is at **v0.2.0**. This means:
+Modularity is at **v0.2.1** (core) / **v0.3.1** (flutter) as of **2026-05-19**. This means:
 
 - The API may change before 1.0
 - Community is small but growing
