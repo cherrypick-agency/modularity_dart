@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate VitePress docs-site content from workspace sources.
 # Requires: `dartdoc_vitepress` (recommended: `dart pub global activate dartdoc_vitepress`)
-# Outputs (generated, not committed): guide/_generated/, api/, .vitepress/generated/
+# Outputs (generated, not committed): guide/modularity_workspace/, api/, .vitepress/generated/
 
 set -euo pipefail
 

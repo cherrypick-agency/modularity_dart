@@ -7,7 +7,7 @@
     "build": "vitepress build",
     "preview": "vitepress preview",
     "docs:gen": "bash generate.sh",
-    "docs:check": "bash -c 'if [ ! -d \"guide/_generated\" ]; then echo \"❌ guide/_generated/ not found - run: npm run docs:gen (or pnpm docs:gen)\"; exit 1; fi'"
+    "docs:check": "bash -c 'if [ ! -d \".vitepress/generated\" ] || [ ! -d \"guide/modularity_workspace\" ]; then echo \"❌ Generated files not found - run: npm run docs:gen (or pnpm docs:gen)\"; exit 1; fi'"
   },
   "devDependencies": {
     "vitepress": "^1.6.4"
