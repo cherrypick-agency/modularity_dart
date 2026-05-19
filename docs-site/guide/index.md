@@ -1,37 +1,92 @@
 # Guide
 
-Welcome to the **Modularity** documentation.
+This guide covers the main path for adopting Modularity in a Flutter app: install the runtime packages, define feature modules, mount them with `ModuleScope`, and use the API reference when you need exact class-level details.
 
-## Basics
+## Before You Start
 
-- [Getting Started](./modularity_workspace/getting-started.md) — Install, create a module, wire the app
-- [Module Architecture](./modularity_workspace/module-architecture.md) — Visibility, imports, parent scope, expects
+- Dart SDK `>=3.9.0 <4.0.0`.
+- Flutter `>=3.29.0` when using `modularity_flutter`.
+- A `RouteObserver<ModalRoute<dynamic>>` if you use the default `routeBound` retention policy.
 
-## Core Concepts
+## Install
 
-- [Module Retention](./modularity_workspace/module-retention.md) — strict, routeBound, keepAlive policies
-- [Hot Reload](./modularity_workspace/hot-reload.md) — How hot reload preserves module state
-- [Dependency Overrides](./modularity_workspace/dependency-overrides.md) — Replace bindings for testing and feature flags
+For a Flutter app:
 
-## Integrations
+```bash
+flutter pub add modularity_flutter modularity_core
+flutter pub add --dev modularity_test
+```
 
-- [Injectable Integration](./modularity_workspace/injectable-integration.md) — Bridge to injectable/get_it
-- [Routing Integration](./modularity_workspace/routing-integration.md) — GoRouter, AutoRoute, tab navigation
-- [State Management](./modularity_workspace/state-management.md) — Bloc, Riverpod, MobX patterns
+For pure Dart package contracts or custom adapters:
 
-## Tools & Practices
+```bash
+dart pub add modularity_contracts modularity_core
+```
 
-- [Testing Modules](./modularity_workspace/testing-modules.md) — Unit tests, widget tests, mocking
-- [CLI Tools](./modularity_workspace/cli-tools.md) — Module graph analysis and visualization
-- [Best Practices](./modularity_workspace/best-practices.md) — Patterns, anti-patterns, checklists
+`modularity_flutter` depends on `modularity_core` and `modularity_contracts`, but adding `modularity_core` explicitly keeps module code imports clear.
 
-## Packages
+## Minimal Flow
 
-| Package | Description |
-|---------|-------------|
-| **modularity_contracts** | Core interfaces and abstractions (Binder, Module, ExportableBinder) |
-| **modularity_core** | SimpleBinder, ModuleController, GraphResolver |
-| **modularity_flutter** | Flutter widgets: ModuleScope, ModularityRoot, ModuleProvider |
-| **modularity_cli** | CLI tools for module graph analysis and visualization |
-| **modularity_injectable** | Integration bridge to injectable/get_it |
-| **modularity_get_it** | Standalone GetIt adapter for Modularity |
+1. Create a `Module` and register private dependencies in `binds()`.
+2. Put only the public surface in `exports()`.
+3. Wrap the app with `ModularityRoot`.
+4. Mount a feature with `ModuleScope`.
+5. Resolve dependencies with `ModuleProvider.of(context).get<T>()`.
+
+```dart
+class AuthModule extends Module {
+  @override
+  void binds(Binder i) {
+    i.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
+  }
+
+  @override
+  void exports(Binder i) {
+    i.registerLazySingleton<AuthService>(
+      () => AuthService(i.get<AuthRepository>()),
+    );
+  }
+}
+```
+
+```dart
+final observer = RouteObserver<ModalRoute<dynamic>>();
+
+ModularityRoot(
+  observer: observer,
+  child: MaterialApp(
+    navigatorObservers: [observer],
+    home: ModuleScope(
+      module: AuthModule(),
+      child: const HomePage(),
+    ),
+  ),
+);
+```
+
+```dart
+final auth = ModuleProvider.of(context).get<AuthService>();
+```
+
+## Reader Path
+
+- [Getting Started](./modularity_workspace/getting-started.md) - install, first module, Flutter wiring, dependency lookup.
+- [Module Architecture](./modularity_workspace/module-architecture.md) - imports, exports, parent scopes, `expects`, and `Configurable<T>`.
+- [Routing Integration](./modularity_workspace/routing-integration.md) - GoRouter, AutoRoute, nested routes, tab layouts.
+- [State Management](./modularity_workspace/state-management.md) - Bloc, Riverpod, MobX, and shared parent state.
+- [Testing Modules](./modularity_workspace/testing-modules.md) - pure Dart module tests and widget integration tests.
+- [Best Practices](./modularity_workspace/best-practices.md) - module sizing, boundaries, lifecycle, and common mistakes.
+
+## API Overview
+
+| Package | Use it for | Primary API |
+|---------|------------|-------------|
+| `modularity_contracts` | Shared abstractions | `Module`, `Binder`, `Configurable`, `ModuleInterceptor` |
+| `modularity_core` | Runtime DI and lifecycle | `ModuleController`, `SimpleBinder`, `ModuleOverrideScope` |
+| `modularity_flutter` | Widget integration | `ModularityRoot`, `ModuleScope`, `ModuleProvider` |
+| `modularity_test` | Isolated module tests | `testModule`, `TestBinder` |
+| `modularity_cli` | Graph analysis and visualization | `GraphVisualizer`, `GraphRenderer`, `ModuleBindingsAnalyzer` |
+| `modularity_get_it` | GetIt-backed binder | `GetItBinder`, `GetItBinderFactory` |
+| `modularity_injectable` | Injectable + GetIt bridge | `ModularityInjectableBridge`, `ModularityExportOnly` |
+
+Use the [API Reference](/api/) for signatures and generated Dart docs. Use the guide pages for architectural rules and end-to-end examples.
